@@ -26,9 +26,24 @@ const errorHandler = (err, req, res, next) => {
       .join(', ');
   }
 
+  if (err.name === 'MulterError' || err.message === 'File type not allowed') {
+    statusCode = 400;
+    message = err.code === 'LIMIT_FILE_SIZE' ? 'File is too large (max 15MB)' : err.message;
+  }
+
+  if (err.type === 'entity.too.large') {
+    statusCode = 413;
+    message = 'Request is too large';
+  }
+
+  if (statusCode >= 500) {
+    console.error(err);
+    if (process.env.NODE_ENV === 'production') message = 'Something went wrong. Please try again.';
+  }
+
   res.status(statusCode).json({
     message,
-    stack: process.env.NODE_ENV === 'production' ? null : err.stack,
+    stack: process.env.NODE_ENV === 'production' ? undefined : err.stack,
   });
 };
 

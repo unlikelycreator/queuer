@@ -1,23 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const {
-  getTickets,
-  getTicket,
-  createTicket,
-  updateTicket,
-  addTicketUpdate,
-  addTicketFiles,
-  replyToTicket,
-  deleteTicket,
-} = require('../controllers/ticketController');
+const t = require('../controllers/ticketController');
 const { protect } = require('../middleware/auth');
 
 router.use(protect);
 
-router.route('/').get(getTickets).post(createTicket);
-router.route('/:id').get(getTicket).put(updateTicket).delete(deleteTicket);
-router.post('/:id/updates', addTicketUpdate);
-router.post('/:id/files', addTicketFiles);
-router.post('/:id/reply', replyToTicket);
+router.get('/counts', t.getTicketCounts);
+router.post('/bulk', t.bulkUpdateTickets);
+router.route('/').get(t.getTickets).post(t.createTicket);
+router.route('/:id').get(t.getTicket).put(t.updateTicket).delete(t.deleteTicket);
+router.post('/:id/updates', t.addTicketUpdate);
+router.post('/:id/files', t.addTicketFiles);
+router.post('/:id/reply', t.replyToTicket);
 
 module.exports = router;

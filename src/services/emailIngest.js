@@ -1,16 +1,7 @@
 const Client = require('../models/Client');
 const Project = require('../models/Project');
 const Ticket = require('../models/Ticket');
-const Counter = require('../models/Counter');
-
-const getNextTicketNumber = async (companyId) => {
-  const counter = await Counter.findOneAndUpdate(
-    { company: companyId },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true }
-  );
-  return counter.seq;
-};
+const { getNextTicketNumber } = require('../utils/ticketNumber');
 
 const TYPE_MAP = {
   bug: 'bug_report',
@@ -86,6 +77,7 @@ async function createTicketFromEmail(company, email) {
     submitterEmail: senderEmail,
     originalMessageId: messageId || undefined,
     files,
+    awaitingTeamReply: true,
     updates: [
       {
         message: `Auto-created from an email sent to ${company.supportEmail || 'the support inbox'} by ${senderName} <${senderEmail}>`,

@@ -1,6 +1,7 @@
 const Client = require('../models/Client');
 const Project = require('../models/Project');
 const Ticket = require('../models/Ticket');
+const { escapeRegex } = require('../utils/sanitize');
 const { getPagination } = require('../utils/pagination');
 
 // @desc    Get all clients for company (paginated)
@@ -13,13 +14,13 @@ const getClients = async (req, res, next) => {
     if (status) filter.status = status;
     if (search) {
       filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { contactPerson: { $regex: search, $options: 'i' } },
+        { name: { $regex: escapeRegex(search), $options: 'i' } },
+        { email: { $regex: escapeRegex(search), $options: 'i' } },
+        { contactPerson: { $regex: escapeRegex(search), $options: 'i' } },
       ];
     }
 
-    const { limit, skip, buildResult } = getPagination(req.query, 12);
+    const { limit, skip, buildResult } = getPagination(req.query, 12, 500);
     const [clients, total] = await Promise.all([
       Client.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).populate('createdBy', 'name'),
       Client.countDocuments(filter),

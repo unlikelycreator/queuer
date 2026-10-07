@@ -12,7 +12,7 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
     const unique = crypto.randomBytes(10).toString('hex');
-    const ext = path.extname(file.originalname);
+    const ext = path.extname(file.originalname).toLowerCase().replace(/[^.a-z0-9]/g, '');
     cb(null, `${Date.now()}-${unique}${ext}`);
   },
 });

@@ -1,6 +1,8 @@
 const Project = require('../models/Project');
 const Ticket = require('../models/Ticket');
 const Client = require('../models/Client');
+const Todo = require('../models/Todo');
+const { escapeRegex } = require('../utils/sanitize');
 const { getPagination } = require('../utils/pagination');
 
 // @desc    Get all projects for company (optionally filter by client, paginated)
@@ -12,9 +14,9 @@ const getProjects = async (req, res, next) => {
     const filter = { company: req.user.company };
     if (client) filter.client = client;
     if (status) filter.status = status;
-    if (search) filter.name = { $regex: search, $options: 'i' };
+    if (search) filter.name = { $regex: escapeRegex(search), $options: 'i' };
 
-    const { limit, skip, buildResult } = getPagination(req.query, 12);
+    const { limit, skip, buildResult } = getPagination(req.query, 12, 500);
     const [projects, total] = await Promise.all([
       Project.find(filter)
         .sort({ createdAt: -1 })
@@ -25,16 +27,37 @@ const getProjects = async (req, res, next) => {
       Project.countDocuments(filter),
     ]);
 
-    const withCounts = await Promise.all(
-      projects.map(async (p) => {
-        const openTickets = await Ticket.countDocuments({
-          project: p._id,
-          status: { $in: ['open', 'in_progress', 'in_review', 'reopened'] },
-        });
-        const totalTickets = await Ticket.countDocuments({ project: p._id });
-        return { ...p.toObject(), openTickets, totalTickets };
-      })
-    );
+    const ids = projects.map((p) => p._id);
+    const [ticketCounts, todoCounts] = await Promise.all([
+      Ticket.aggregate([
+        { $match: { project: { $in: ids } } },
+        { $group: { _id: { project: '$project', status: '$status' }, count: { $sum: 1 } } },
+      ]),
+      Todo.aggregate([
+        { $match: { project: { $in: ids } } },
+        { $group: { _id: { project: '$project', completed: '$completed' }, count: { $sum: 1 } } },
+      ]),
+    ]);
+    const ACTIVE = ['open', 'in_progress', 'in_review', 'reopened'];
+    const tMap = {};
+    ticketCounts.forEach(({ _id, count }) => {
+      const e = (tMap[String(_id.project)] ||= { total: 0, open: 0 });
+      e.total += count;
+      if (ACTIVE.includes(_id.status)) e.open += count;
+    });
+    const dMap = {};
+    todoCounts.forEach(({ _id, count }) => {
+      const e = (dMap[String(_id.project)] ||= { total: 0, done: 0 });
+      e.total += count;
+      if (_id.completed) e.done += count;
+    });
+    const withCounts = projects.map((p) => ({
+      ...p.toObject(),
+      openTickets: tMap[String(p._id)]?.open || 0,
+      totalTickets: tMap[String(p._id)]?.total || 0,
+      totalTodos: dMap[String(p._id)]?.total || 0,
+      doneTodos: dMap[String(p._id)]?.done || 0,
+    }));
 
     res.json(buildResult(withCounts, total));
   } catch (error) {
@@ -133,6 +156,14 @@ const updateProject = async (req, res, next) => {
     fields.forEach((f) => {
       if (req.body[f] !== undefined) project[f] = req.body[f];
     });
+    if (req.body.portal && typeof req.body.portal === 'object') {
+      const p = req.body.portal;
+      project.portal = project.portal || {};
+      ['showAllTickets', 'allowComments', 'showProjectDetails'].forEach((k) => {
+        if (typeof p[k] === 'boolean') project.portal[k] = p[k];
+      });
+      if (p.welcomeMessage !== undefined) project.portal.welcomeMessage = String(p.welcomeMessage).slice(0, 1000);
+    }
     await project.save();
     const populated = await project.populate('client', 'name');
     res.json(populated);
@@ -152,6 +183,7 @@ const deleteProject = async (req, res, next) => {
       throw new Error('Project not found');
     }
     await Ticket.deleteMany({ project: project._id });
+    await Todo.deleteMany({ project: project._id });
     await project.deleteOne();
     res.json({ message: 'Project and related tickets removed' });
   } catch (error) {

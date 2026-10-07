@@ -2,14 +2,10 @@ const { OAuth2Client } = require('google-auth-library');
 const crypto = require('crypto');
 const User = require('../models/User');
 const Company = require('../models/Company');
-const generateToken = require('../utils/generateToken');
+const { randomColor } = require('../utils/colors');
+const { finishLogin } = require('./authController');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
-function randomColor() {
-  const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#ef4444', '#3b82f6'];
-  return colors[Math.floor(Math.random() * colors.length)];
-}
 
 // @desc    Sign in / sign up / join a company with Google
 // @route   POST /api/auth/google
@@ -33,15 +29,16 @@ const googleAuth = async (req, res, next) => {
       audience: process.env.GOOGLE_CLIENT_ID,
     });
     const payload = ticket.getPayload();
-    const { sub: googleId, email, name, picture, email_verified: emailVerified } = payload;
+    const { sub: googleId, name, picture, email_verified: emailVerified } = payload;
+    const email = String(payload.email || '').toLowerCase();
 
     if (!emailVerified) {
       res.status(400);
       throw new Error('Your Google email is not verified');
     }
 
-    // Existing account (by googleId or matching email) -> just log them in.
-    let user = await User.findOne({ $or: [{ googleId }, { email }] }).populate('company', 'name inviteCode');
+    // Existing account (by googleId or matching email) -> log them in (2FA still applies).
+    let user = await User.findOne({ $or: [{ googleId }, { email }] }).select('+password');
 
     if (user) {
       if (!user.isActive) {
@@ -51,18 +48,9 @@ const googleAuth = async (req, res, next) => {
       if (!user.googleId) {
         user.googleId = googleId;
         if (!user.avatarUrl) user.avatarUrl = picture;
-        await user.save();
+        await user.save({ validateBeforeSave: false });
       }
-      return res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        avatarColor: user.avatarColor,
-        avatarUrl: user.avatarUrl,
-        company: user.company,
-        token: generateToken(user._id),
-      });
+      return finishLogin(user, res);
     }
 
     // New account — need to know whether they're creating a workspace or joining one.
@@ -71,7 +59,7 @@ const googleAuth = async (req, res, next) => {
         res.status(400);
         throw new Error('An invite code is required to join a company');
       }
-      const company = await Company.findOne({ inviteCode: inviteCode.toUpperCase().trim() });
+      const company = await Company.findOne({ inviteCode: String(inviteCode).toUpperCase().trim() });
       if (!company) {
         res.status(400);
         throw new Error('Invalid invite code');
@@ -85,15 +73,7 @@ const googleAuth = async (req, res, next) => {
         company: company._id,
         avatarColor: randomColor(),
       });
-      return res.status(201).json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        avatarUrl: user.avatarUrl,
-        company: { _id: company._id, name: company.name },
-        token: generateToken(user._id),
-      });
+      return finishLogin(user, res, 201);
     }
 
     if (mode === 'register') {
@@ -101,8 +81,11 @@ const googleAuth = async (req, res, next) => {
         res.status(400);
         throw new Error('Company name is required to create a workspace');
       }
-      const inviteCodeValue = crypto.randomBytes(4).toString('hex').toUpperCase();
-      const company = await Company.create({ name: companyName, owner: null, inviteCode: inviteCodeValue });
+      const company = await Company.create({
+        name: companyName,
+        owner: null,
+        inviteCode: crypto.randomBytes(4).toString('hex').toUpperCase(),
+      });
       user = await User.create({
         name,
         email,
@@ -114,15 +97,7 @@ const googleAuth = async (req, res, next) => {
       });
       company.owner = user._id;
       await company.save();
-      return res.status(201).json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        avatarUrl: user.avatarUrl,
-        company: { _id: company._id, name: company.name, inviteCode: company.inviteCode },
-        token: generateToken(user._id),
-      });
+      return finishLogin(user, res, 201);
     }
 
     // mode === 'login' (or unspecified) but no account exists yet

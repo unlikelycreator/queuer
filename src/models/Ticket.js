@@ -9,6 +9,15 @@ const updateSchema = new mongoose.Schema(
     statusChangeTo: { type: String },
     isInternal: { type: Boolean, default: false }, // internal-only note, hidden from public tracking page
     sentAsEmail: { type: Boolean, default: false }, // this update was also sent as an email reply to the submitter
+    fromClient: { type: Boolean, default: false }, // posted by the client from the portal / tracking page
+    files: [
+      {
+        filename: String,
+        originalName: String,
+        url: String,
+        size: Number,
+      },
+    ],
     createdAt: { type: Date, default: Date.now },
   },
   { _id: true }
@@ -44,6 +53,8 @@ const ticketSchema = new mongoose.Schema(
       enum: ['low', 'medium', 'high', 'critical'],
       default: 'medium',
     },
+    // Numeric copy of priority (0-3) so "sort by priority" is a plain indexed sort.
+    priorityRank: { type: Number, default: 1 },
     status: {
       type: String,
       enum: ['open', 'in_progress', 'in_review', 'resolved', 'closed', 'reopened'],
@@ -72,6 +83,9 @@ const ticketSchema = new mongoose.Schema(
     files: [fileSchema],
     updates: [updateSchema],
     resolvedAt: { type: Date },
+    lastActivityAt: { type: Date, default: Date.now },
+    // Set when the client posts from the portal and no one on the team has replied yet.
+    awaitingTeamReply: { type: Boolean, default: false },
 
     // Lets an external submitter check status without logging in
     publicToken: { type: String, unique: true, sparse: true },
@@ -80,12 +94,26 @@ const ticketSchema = new mongoose.Schema(
 );
 
 ticketSchema.index({ company: 1, ticketNumber: 1 }, { unique: true });
+ticketSchema.index({ company: 1, status: 1, createdAt: -1 });
+ticketSchema.index({ project: 1, createdAt: -1 });
+
+const PRIORITY_RANK = { low: 0, medium: 1, high: 2, critical: 3 };
 
 ticketSchema.pre('save', function (next) {
+  this.priorityRank = PRIORITY_RANK[this.priority] ?? 1;
   if (!this.publicToken) {
     this.publicToken = crypto.randomBytes(14).toString('hex');
   }
   next();
 });
 
-module.exports = mongoose.model('Ticket', ticketSchema);
+const Ticket = mongoose.model('Ticket', ticketSchema);
+
+// Backfills priorityRank on tickets created before the field existed. Cheap and idempotent.
+Ticket.backfillPriorityRank = async () => {
+  for (const [priority, rank] of Object.entries(PRIORITY_RANK)) {
+    await Ticket.updateMany({ priority, priorityRank: { $ne: rank } }, { $set: { priorityRank: rank } });
+  }
+};
+
+module.exports = Ticket;

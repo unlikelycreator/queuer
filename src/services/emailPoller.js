@@ -178,4 +178,9 @@ function startEmailPolling() {
   setTimeout(pollAllCompanies, 5000);
 }
 
-module.exports = { startEmailPolling, pollCompanyMailbox, pollAllCompanies };
+function stopEmailPolling() {
+  if (pollingTimer) clearInterval(pollingTimer);
+  pollingTimer = null;
+}
+
+module.exports = { startEmailPolling, stopEmailPolling, pollCompanyMailbox, pollAllCompanies };

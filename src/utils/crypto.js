@@ -4,7 +4,7 @@
 const crypto = require('crypto');
 
 function getKey() {
-  const raw = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || 'queuer_fallback_key';
+  const raw = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || 'zoopdesk_fallback_key';
   return crypto.createHash('sha256').update(raw).digest(); // 32 bytes for AES-256
 }
 

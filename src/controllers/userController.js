@@ -1,6 +1,8 @@
 const crypto = require('crypto');
 const User = require('../models/User');
 const Company = require('../models/Company');
+const { randomColor } = require('../utils/colors');
+const { validatePassword } = require('./authController');
 
 // @desc    Get all users in company
 // @route   GET /api/users
@@ -26,12 +28,18 @@ const createUser = async (req, res, next) => {
       throw new Error('Please provide name, email and password');
     }
 
+    const pwError = validatePassword(password);
+    if (pwError) {
+      res.status(400);
+      throw new Error(pwError);
+    }
+
     if (role === 'owner') {
       res.status(400);
       throw new Error('Cannot create another owner');
     }
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: String(email).toLowerCase().trim() });
     if (existingUser) {
       res.status(400);
       throw new Error('An account with this email already exists');
@@ -43,9 +51,7 @@ const createUser = async (req, res, next) => {
       password,
       role: role && ['admin', 'member'].includes(role) ? role : 'member',
       company: req.user.company,
-      avatarColor: ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'][
-        Math.floor(Math.random() * 6)
-      ],
+      avatarColor: randomColor(),
     });
 
     res.status(201).json(user);
