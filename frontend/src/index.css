@@ -1,0 +1,208 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * ZoopDesk design tokens — "Evergreen".
+ * Deep forest + emerald with a chartreuse spark. Every colour in the app comes from these
+ * tokens, so light/dark themes stay consistent.
+ */
+@layer base {
+  :root {
+    --background: 120 18% 97.6%;
+    --foreground: 160 32% 9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 160 32% 9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 160 32% 9%;
+
+    --primary: 158 74% 29%;
+    --primary-foreground: 140 40% 98%;
+
+    --secondary: 140 20% 93.5%;
+    --secondary-foreground: 160 26% 16%;
+
+    --muted: 140 16% 94.5%;
+    --muted-foreground: 160 9% 40%;
+
+    --accent: 150 46% 91%;
+    --accent-foreground: 158 74% 22%;
+
+    --spark: 78 85% 52%;
+    --spark-foreground: 160 50% 8%;
+
+    --destructive: 356 72% 52%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 140 16% 88.5%;
+    --input: 140 14% 85%;
+    --ring: 158 74% 32%;
+
+    /* The sidebar stays a deep forest panel in both themes — the signature of the UI. */
+    --sidebar: 163 48% 9%;
+    --sidebar-foreground: 140 14% 78%;
+    --sidebar-muted: 150 10% 55%;
+    --sidebar-border: 160 34% 15%;
+    --sidebar-active: 156 46% 17%;
+    --sidebar-active-foreground: 90 70% 78%;
+
+    --chart-1: 158 74% 32%;
+    --chart-2: 78 80% 46%;
+    --chart-3: 186 60% 40%;
+    --chart-4: 38 92% 50%;
+    --chart-5: 266 60% 60%;
+
+    --radius: 0.9rem;
+    --shadow-color: 160 40% 12%;
+  }
+
+  .dark {
+    --background: 162 26% 5.2%;
+    --foreground: 120 12% 92%;
+
+    --card: 162 22% 7.6%;
+    --card-foreground: 120 12% 92%;
+
+    --popover: 162 22% 8.6%;
+    --popover-foreground: 120 12% 92%;
+
+    --primary: 152 64% 47%;
+    --primary-foreground: 162 60% 6%;
+
+    --secondary: 160 16% 12.5%;
+    --secondary-foreground: 120 10% 86%;
+
+    --muted: 160 15% 11.5%;
+    --muted-foreground: 150 7% 58%;
+
+    --accent: 158 34% 15%;
+    --accent-foreground: 145 60% 74%;
+
+    --spark: 78 85% 58%;
+    --spark-foreground: 160 50% 8%;
+
+    --destructive: 356 70% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 160 14% 15%;
+    --input: 160 14% 18%;
+    --ring: 152 64% 47%;
+
+    --sidebar: 164 32% 3.8%;
+    --sidebar-foreground: 140 10% 74%;
+    --sidebar-muted: 150 8% 48%;
+    --sidebar-border: 160 20% 11%;
+    --sidebar-active: 156 36% 12%;
+    --sidebar-active-foreground: 90 75% 72%;
+
+    --chart-1: 152 64% 47%;
+    --chart-2: 78 80% 55%;
+    --chart-3: 186 60% 50%;
+    --chart-4: 38 92% 56%;
+    --chart-5: 266 70% 70%;
+
+    --shadow-color: 0 0% 0%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: 'Bricolage Grotesque', 'Manrope', system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+  ::selection {
+    background: hsl(var(--spark) / 0.45);
+    color: hsl(var(--foreground));
+  }
+  /* Applied only while the authenticated app shell (sidebar + topbar) is mounted.
+     The shell scrolls internally via its own <main>, so the document itself must
+     not scroll. */
+  body.app-shell-active {
+    overflow: hidden;
+  }
+  input[type='date']::-webkit-calendar-picker-indicator {
+    opacity: 0.6;
+    cursor: pointer;
+  }
+  .dark input[type='date']::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .shadow-soft {
+    box-shadow: 0 1px 2px hsl(var(--shadow-color) / 0.05), 0 4px 14px -6px hsl(var(--shadow-color) / 0.1);
+  }
+  .shadow-soft-lg {
+    box-shadow: 0 2px 6px hsl(var(--shadow-color) / 0.06), 0 18px 40px -14px hsl(var(--shadow-color) / 0.22);
+  }
+  .bg-brand {
+    background-image: linear-gradient(135deg, hsl(158 78% 24%), hsl(162 70% 34%) 55%, hsl(150 60% 42%));
+  }
+  .dark .bg-brand {
+    background-image: linear-gradient(135deg, hsl(156 62% 30%), hsl(154 60% 40%) 55%, hsl(140 56% 48%));
+  }
+  .text-gradient {
+    background-image: linear-gradient(100deg, hsl(var(--primary)), hsl(var(--spark)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* Subtle dot grid used on auth/portal backdrops. */
+  .bg-grid {
+    background-image: radial-gradient(hsl(var(--foreground) / 0.07) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.06'/%3E%3C/svg%3E");
+  }
+  .glass {
+    backdrop-filter: blur(14px) saturate(140%);
+    background: hsl(var(--card) / 0.72);
+  }
+  .card-hover {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-soft-lg hover:border-primary/30;
+  }
+}

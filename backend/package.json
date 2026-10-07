@@ -1,0 +1,37 @@
+{
+  "name": "zoopdesk-backend",
+  "version": "2.0.0",
+  "description": "ZoopDesk backend - project, client & ticket management API",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "compression": "^1.8.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.7.1",
+    "express-validator": "^7.2.0",
+    "google-auth-library": "^9.14.1",
+    "helmet": "^8.3.0",
+    "html-to-text": "^9.0.5",
+    "imapflow": "^2.0.5",
+    "jsonwebtoken": "^9.0.2",
+    "mailparser": "^3.9.28",
+    "mongoose": "^8.5.0",
+    "morgan": "^1.10.0",
+    "multer": "^2.4.0",
+    "nodemailer": "^10.0.10",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
