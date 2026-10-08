@@ -309,6 +309,22 @@ export default function ProjectDetail() {
         </TabsContent>
 
         <TabsContent value="todos">
+          <div
+            className={cn(
+              'mb-4 flex flex-wrap items-center gap-3 rounded-xl border px-4 py-2.5 text-sm',
+              project.portal?.showTodos ? 'border-lime-500/30 bg-lime-400/10' : 'border-border bg-card'
+            )}
+          >
+            <Globe className={cn('h-4 w-4', project.portal?.showTodos ? 'text-lime-600 dark:text-spark' : 'text-muted-foreground')} />
+            <span className="flex-1">
+              {project.portal?.showTodos
+                ? 'Visible to the client in the portal (read-only — notes stay private).'
+                : 'Private to your team. You can share a read-only view in the client portal.'}
+            </span>
+            <Button variant="ghost" size="sm" onClick={() => setPortalOpen(true)}>
+              {project.portal?.showTodos ? 'Manage' : 'Share with client'}
+            </Button>
+          </div>
           <ProjectTodos projectId={project._id} />
         </TabsContent>
       </Tabs>

@@ -86,9 +86,13 @@ to let the API serve it on the same port.
 1. Open a project → **Client portal** → copy the link and send it to your client.
 2. Under *Settings* choose whether the client sees all project tickets or only their own, whether they
    can reply, and add a welcome message.
-3. New requests appear in **Tickets** with a pulsing dot and under **Awaiting reply** until someone on
+3. **Share the to-do list** (toggle on the *Share link* tab or under *Settings*, off by default) adds a
+   read-only **Plan** tab to the portal: the project's day-by-day to-dos with who's on them and what's
+   done. To-do notes and ticket links are never shown. The project's To-dos tab tells your team when the
+   plan is visible to the client.
+4. New requests appear in **Tickets** with a pulsing dot and under **Awaiting reply** until someone on
    your team answers publicly. Internal notes are never shown to clients.
-4. Tracking links (`/public/ticket/…`) are included in auto-replies and email replies, so clients can
+5. Tracking links (`/public/ticket/…`) are included in auto-replies and email replies, so clients can
    always get back to the conversation.
 
 ## Two-factor authentication
@@ -112,6 +116,7 @@ PUT  /api/auth/me                    PUT /api/auth/password
 GET  /api/tickets/counts             POST /api/tickets/bulk
 GET|POST /api/projects/:id/todos     PUT|DELETE /api/todos/:id     GET /api/todos/my-day
 GET  /api/public/portal/:token       GET|POST /api/public/portal/:token/tickets
+GET  /api/public/portal/:token/todos (only when the project shares its to-do list)
 POST /api/public/tickets/:token/comments
 ```
 

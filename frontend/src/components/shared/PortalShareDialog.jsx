@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Copy, RefreshCw, ExternalLink, Globe, Code2, Eye, MessageSquare, LayoutDashboard, Loader2 } from 'lucide-react';
+import { Copy, RefreshCw, ExternalLink, Globe, Code2, Eye, MessageSquare, LayoutDashboard, Loader2, ListTodo } from 'lucide-react';
 import * as api from '@/api/endpoints';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -19,7 +19,13 @@ export function portalUrl(token) {
 export default function PortalShareDialog({ open, onOpenChange, project, onChanged }) {
   const [enabled, setEnabled] = useState(true);
   const [token, setToken] = useState('');
-  const [portal, setPortal] = useState({ showAllTickets: true, allowComments: true, showProjectDetails: true, welcomeMessage: '' });
+  const [portal, setPortal] = useState({
+    showAllTickets: true,
+    allowComments: true,
+    showProjectDetails: true,
+    showTodos: false,
+    welcomeMessage: '',
+  });
   const [regenOpen, setRegenOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -31,6 +37,7 @@ export default function PortalShareDialog({ open, onOpenChange, project, onChang
         showAllTickets: project.portal?.showAllTickets ?? true,
         allowComments: project.portal?.allowComments ?? true,
         showProjectDetails: project.portal?.showProjectDetails ?? true,
+        showTodos: project.portal?.showTodos ?? false,
         welcomeMessage: project.portal?.welcomeMessage || '',
       });
     }
@@ -63,7 +70,10 @@ export default function PortalShareDialog({ open, onOpenChange, project, onChang
   const setOption = (key, value) => {
     const next = { ...portal, [key]: value };
     setPortal(next);
-    save({ portal: { [key]: value } });
+    save(
+      { portal: { [key]: value } },
+      key === 'showTodos' ? (value ? 'To-do list is now visible in the portal' : 'To-do list hidden from the portal') : undefined
+    );
   };
 
   const regenerate = async () => {
@@ -85,6 +95,12 @@ export default function PortalShareDialog({ open, onOpenChange, project, onChang
     { key: 'showProjectDetails', icon: LayoutDashboard, title: 'Show project overview', text: 'Status, timeline and progress stats.' },
     { key: 'showAllTickets', icon: Eye, title: 'Show all project tickets', text: 'Off = clients only see tickets they submitted (looked up by email).' },
     { key: 'allowComments', icon: MessageSquare, title: 'Allow client replies', text: 'Clients can reply on tickets and reopen resolved ones.' },
+    {
+      key: 'showTodos',
+      icon: ListTodo,
+      title: 'Show to-do list',
+      text: 'Read-only daily plan: titles, dates, who and done/not done. Notes stay private.',
+    },
   ];
 
   return (
@@ -143,6 +159,19 @@ export default function PortalShareDialog({ open, onOpenChange, project, onChang
                 <Button type="button" variant="ghost" size="sm" onClick={() => setRegenOpen(true)}>
                   <RefreshCw /> Regenerate
                 </Button>
+              </div>
+              <div className="flex items-center gap-3 rounded-xl border border-border px-4 py-3">
+                <ListTodo className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">Share the to-do list with this client</p>
+                  <p className="text-xs text-muted-foreground">Adds a read-only “Plan” tab to the portal. More options under Settings.</p>
+                </div>
+                <Switch
+                  checked={portal.showTodos}
+                  disabled={busy}
+                  onCheckedChange={(v) => setOption('showTodos', v)}
+                  aria-label="Show to-do list in the client portal"
+                />
               </div>
             </TabsContent>
 

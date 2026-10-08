@@ -21,6 +21,7 @@ router.use(readLimiter);
 router.get('/portal/:token', p.getPortal);
 router.get('/portal/:token/tickets', p.getPortalTickets);
 router.post('/portal/:token/tickets', writeLimiter, p.submitPortalTicket);
+router.get('/portal/:token/todos', p.getPortalTodos);
 
 // Legacy embeddable intake form — kept so existing iframes keep working
 router.get('/forms/:token', p.getPublicForm);

@@ -159,7 +159,7 @@ const updateProject = async (req, res, next) => {
     if (req.body.portal && typeof req.body.portal === 'object') {
       const p = req.body.portal;
       project.portal = project.portal || {};
-      ['showAllTickets', 'allowComments', 'showProjectDetails'].forEach((k) => {
+      ['showAllTickets', 'allowComments', 'showProjectDetails', 'showTodos'].forEach((k) => {
         if (typeof p[k] === 'boolean') project.portal[k] = p[k];
       });
       if (p.welcomeMessage !== undefined) project.portal.welcomeMessage = String(p.welcomeMessage).slice(0, 1000);

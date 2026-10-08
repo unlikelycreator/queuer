@@ -15,6 +15,7 @@ import {
   Mail,
   ShieldOff,
   Copy,
+  ListTodo,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as api from '@/api/endpoints';
@@ -26,6 +27,7 @@ import { TypeBadge, StatusBadge, ProjectStatusBadge } from '@/components/shared/
 import Pagination from '@/components/shared/Pagination';
 import PortalChrome, { readIdentity, saveIdentity } from '@/components/portal/PortalChrome';
 import RequestForm from '@/components/portal/RequestForm';
+import PortalPlan from '@/components/portal/PortalPlan';
 import { TICKET_STATUSES } from '@/lib/constants';
 import { cn, formatDate, timeAgo, formatDuration } from '@/lib/utils';
 
@@ -159,6 +161,7 @@ export default function Portal() {
       <div className="mb-5 flex items-center gap-1 rounded-xl border border-border bg-card p-1 shadow-sm sm:w-fit">
         {[
           { value: 'requests', label: 'Requests', icon: Inbox },
+          ...(settings.showTodos ? [{ value: 'plan', label: 'Plan', icon: ListTodo }] : []),
           { value: 'new', label: 'New request', icon: Plus },
         ].map((t) => (
           <button
@@ -174,7 +177,9 @@ export default function Portal() {
         ))}
       </div>
 
-      {view === 'new' ? (
+      {view === 'plan' && settings.showTodos ? (
+        <PortalPlan token={token} />
+      ) : view === 'new' ? (
         submitted ? (
           <SubmittedCard result={submitted} onAnother={() => setSubmitted(null)} onViewAll={() => setView('requests')} />
         ) : (

@@ -80,6 +80,7 @@ export const globalSearch = (q) => api.get('/search', { params: { q } });
 // Public (unauthenticated) endpoints — no token attached
 export const getPortal = (token) => publicApi.get(`/public/portal/${token}`);
 export const getPortalTickets = (token, params) => publicApi.get(`/public/portal/${token}/tickets`, { params });
+export const getPortalTodos = (token, params) => publicApi.get(`/public/portal/${token}/todos`, { params });
 export const submitPortalTicket = (token, data) => publicApi.post(`/public/portal/${token}/tickets`, data);
 export const getPublicForm = (token) => publicApi.get(`/public/forms/${token}`);
 export const submitPublicForm = (token, data) => publicApi.post(`/public/forms/${token}/submit`, data);

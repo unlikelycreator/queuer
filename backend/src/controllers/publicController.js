@@ -2,6 +2,7 @@ const Project = require('../models/Project');
 const Company = require('../models/Company');
 const Ticket = require('../models/Ticket');
 const User = require('../models/User');
+const Todo = require('../models/Todo');
 const { createTicketFromEmail } = require('../services/emailIngest');
 const { sendAutoReply, sendClientCommentNotification } = require('../services/mailSender');
 const { getNextTicketNumber } = require('../utils/ticketNumber');
@@ -118,6 +119,7 @@ const getPortal = async (req, res, next) => {
         showAllTickets: portal.showAllTickets !== false,
         allowComments: portal.allowComments !== false,
         showProjectDetails: portal.showProjectDetails !== false,
+        showTodos: portal.showTodos === true,
       },
       project:
         portal.showProjectDetails !== false
@@ -312,6 +314,63 @@ const addPublicComment = async (req, res, next) => {
   }
 };
 
+// "2026-10-08" -> Date at 00:00 UTC (todos are stored per calendar day).
+function parseDay(value) {
+  const m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// @desc    Read-only view of the project's to-do plan, only when the team has enabled it.
+//          Notes and ticket links are internal and never returned.
+// @route   GET /api/public/portal/:token/todos?from=YYYY-MM-DD&to=YYYY-MM-DD
+const getPortalTodos = async (req, res, next) => {
+  try {
+    const project = await findPortalProject(req.params.token, res);
+    if (project.portal?.showTodos !== true) {
+      res.status(403);
+      throw new Error('The to-do list is not shared for this project');
+    }
+    const today = parseDay(new Date().toISOString().slice(0, 10));
+    const from = parseDay(req.query.from) || new Date(today.getTime() - 3 * 864e5);
+    let to = parseDay(req.query.to) || new Date(today.getTime() + 3 * 864e5);
+    // Cap the range so the endpoint can't be used to dump everything at once.
+    if (to - from > 62 * 864e5) to = new Date(from.getTime() + 62 * 864e5);
+
+    const [todos, summary] = await Promise.all([
+      Todo.find({ project: project._id, date: { $gte: from, $lte: to } })
+        .sort({ date: 1, completed: 1, createdAt: 1 })
+        .populate('assignedTo', 'name avatarColor')
+        .lean(),
+      Todo.aggregate([
+        { $match: { project: project._id } },
+        { $group: { _id: '$completed', count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    const total = summary.reduce((a, s) => a + s.count, 0);
+    const done = summary.filter((s) => s._id === true).reduce((a, s) => a + s.count, 0);
+
+    res.json({
+      from,
+      to,
+      totals: { total, done },
+      todos: todos.map((t) => ({
+        _id: t._id,
+        title: t.title,
+        date: t.date,
+        priority: t.priority,
+        completed: t.completed,
+        completedAt: t.completedAt,
+        assignee: t.assignedTo ? { name: t.assignedTo.name, avatarColor: t.assignedTo.avatarColor } : null,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ───────────────────────── Legacy embeddable form ─────────────────────────
 
 // @desc    Get public metadata for a project's embeddable intake form
@@ -364,6 +423,7 @@ const emailWebhook = async (req, res, next) => {
 module.exports = {
   getPortal,
   getPortalTickets,
+  getPortalTodos,
   submitPortalTicket,
   getPublicTicket,
   addPublicComment,

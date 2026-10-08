@@ -29,6 +29,8 @@ const projectSchema = new mongoose.Schema(
       showAllTickets: { type: Boolean, default: true }, // false = only tickets looked up by email/tracking link
       allowComments: { type: Boolean, default: true },
       showProjectDetails: { type: Boolean, default: true },
+      // Off by default: the team's to-do plan is internal until someone chooses to share it.
+      showTodos: { type: Boolean, default: false },
       welcomeMessage: { type: String, trim: true, maxlength: 1000, default: '' },
     },
   },
