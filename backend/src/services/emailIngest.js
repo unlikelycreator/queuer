@@ -2,6 +2,8 @@ const Client = require('../models/Client');
 const Project = require('../models/Project');
 const Ticket = require('../models/Ticket');
 const { getNextTicketNumber } = require('../utils/ticketNumber');
+const { resolveType } = require('../utils/workspace');
+const { applySla } = require('./sla');
 
 const TYPE_MAP = {
   bug: 'bug_report',
@@ -59,11 +61,11 @@ async function createTicketFromEmail(company, email) {
   }
 
   const typeTag = (subject.match(/\[(bug|feature|change|support)[^\]]*\]/i) || [])[1];
-  const type = TYPE_MAP[typeTag?.toLowerCase()] || 'support_ticket';
+  const type = resolveType(company, TYPE_MAP[typeTag?.toLowerCase()] || 'support_ticket');
 
   const ticketNumber = await getNextTicketNumber(company._id);
 
-  const ticket = await Ticket.create({
+  const ticket = new Ticket({
     company: company._id,
     client: client._id,
     project: project._id,
@@ -85,6 +87,17 @@ async function createTicketFromEmail(company, email) {
     ],
   });
 
+  ticket.createdAt = new Date();
+  applySla(ticket, company);
+  await ticket.save();
+  // Lazy require avoids a circular import (engine → mailSender → …).
+  await require('./automationEngine').runAutomations('ticket.created', ticket._id, company._id);
+  require('./notify').notify(company._id, 'admins', {
+    kind: 'client_reply',
+    title: `New email ticket #${ticket.ticketNumber}`,
+    body: ticket.title,
+    link: `/tickets/${ticket._id}`,
+  });
   return ticket;
 }
 

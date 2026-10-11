@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Loader2, Send, Check, Clock, RotateCcw, Copy, ShieldOff } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, Check, Clock, RotateCcw, Copy, ShieldOff, Star } from 'lucide-react';
 import * as api from '@/api/endpoints';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { AttachButton, PendingFiles, AttachmentGrid } from '@/components/shared/
 import PortalChrome, { readIdentity, saveIdentity } from '@/components/portal/PortalChrome';
 import useUploader from '@/lib/useUploader';
 import { cn, formatDateTime, timeAgo, apiError } from '@/lib/utils';
+import { setTicketTypes } from '@/lib/constants';
 
 const STEPS = [
   { key: 'open', label: 'Received' },
@@ -38,6 +39,7 @@ export default function PublicTicketStatus() {
     api
       .getPublicTicket(token)
       .then((res) => {
+        setTicketTypes(res.data.ticketTypes);
         setTicket(res.data);
         document.title = `#${res.data.ticketNumber} ${res.data.title} · ${res.data.companyName || 'Support'}`;
       })
@@ -143,6 +145,24 @@ export default function PublicTicketStatus() {
           </div>
           <div className="p-5">
             <p className="whitespace-pre-wrap text-[14.5px] leading-relaxed">{ticket.description}</p>
+            {ticket.fields?.length > 0 && (
+              <dl className="mt-4 grid gap-x-6 gap-y-2 rounded-xl bg-secondary/40 p-4 text-sm sm:grid-cols-2">
+                {ticket.fields.map((f) => (
+                  <div key={f.label} className="flex justify-between gap-3">
+                    <dt className="text-muted-foreground">{f.label}</dt>
+                    <dd className="truncate font-medium">
+                      {f.type === 'checkbox' ? (f.value ? 'Yes' : 'No') : f.type === 'url' ? (
+                        <a href={f.value} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                          Open link
+                        </a>
+                      ) : (
+                        String(f.value)
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
             <AttachmentGrid files={ticket.files.filter((f) => !ticket.updates.some((u) => u.files?.some((x) => x.url === f.url)))} className="mt-4" />
           </div>
         </Card>
@@ -201,6 +221,10 @@ export default function PublicTicketStatus() {
               )
             )}
           </div>
+        )}
+
+        {ticket.csatEnabled && ['resolved', 'closed'].includes(ticket.status) && (
+          <CsatWidget token={token} existing={ticket.csat} />
         )}
 
         {ticket.allowComments ? (
@@ -286,6 +310,61 @@ function ReplyBox({ token, ticket, onUpdated }) {
           </Button>
         </div>
       </form>
+    </Card>
+  );
+}
+
+function CsatWidget({ token, existing }) {
+  const [rating, setRating] = useState(existing?.rating || 0);
+  const [hover, setHover] = useState(0);
+  const [comment, setComment] = useState(existing?.comment || '');
+  const [done, setDone] = useState(!!existing);
+  const [sending, setSending] = useState(false);
+  const labels = ['', 'Very unhappy', 'Unhappy', 'Okay', 'Happy', 'Delighted'];
+
+  const send = async () => {
+    setSending(true);
+    try {
+      await api.submitCsat(token, { rating, comment });
+      setDone(true);
+      toast.success('Thanks for your feedback!');
+    } catch (err) {
+      toast.error(apiError(err, 'Could not send rating'));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Card className="mb-6 overflow-hidden border-amber-500/30">
+      <div className="bg-gradient-to-r from-amber-400/15 to-transparent p-5">
+        <p className="font-display text-lg font-bold">{done ? 'Thanks for rating us!' : 'How did we do?'}</p>
+        <p className="text-sm text-muted-foreground">{done ? 'Your feedback helps the team improve.' : 'Rate how this request was handled — it takes two seconds.'}</p>
+        <div className="mt-3 flex items-center gap-1" onMouseLeave={() => setHover(0)}>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              disabled={done}
+              onMouseEnter={() => setHover(n)}
+              onClick={() => setRating(n)}
+              aria-label={`${n} star${n > 1 ? 's' : ''}`}
+              className="transition-transform hover:scale-110 disabled:hover:scale-100"
+            >
+              <Star className={cn('h-8 w-8', n <= (hover || rating) ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30')} />
+            </button>
+          ))}
+          {(hover || rating) > 0 && <span className="ml-2 text-sm font-semibold">{labels[hover || rating]}</span>}
+        </div>
+        {!done && rating > 0 && (
+          <div className="mt-3 space-y-2 animate-fade-in">
+            <Textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Anything we could do better? (optional)" />
+            <Button variant="gradient" size="sm" onClick={send} disabled={sending}>
+              {sending && <Loader2 className="animate-spin" />} Send rating
+            </Button>
+          </div>
+        )}
+      </div>
     </Card>
   );
 }

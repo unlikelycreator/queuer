@@ -11,6 +11,23 @@ const {
 const { getPagination } = require('../utils/pagination');
 const { getNextTicketNumber } = require('../utils/ticketNumber');
 const { escapeRegex, isObjectId } = require('../utils/sanitize');
+const { resolveType, cleanCustomFields } = require('../utils/workspace');
+const { applySla, recordFirstResponse, recordResolution } = require('../services/sla');
+const { runAutomations } = require('../services/automationEngine');
+const { logActivity } = require('../services/activity');
+const { notify } = require('../services/notify');
+
+const STATUS_EVENT = (req, ticket, summary) =>
+  logActivity({
+    company: req.user.company,
+    actor: req.user,
+    entityType: 'ticket',
+    entityId: ticket._id,
+    entityLabel: `#${ticket.ticketNumber}`,
+    action: 'ticket.updated',
+    summary,
+    link: `/tickets/${ticket._id}`,
+  });
 
 const STATUSES = ['open', 'in_progress', 'in_review', 'resolved', 'closed', 'reopened'];
 const ACTIVE_STATUSES = ['open', 'in_progress', 'in_review', 'reopened'];
@@ -36,6 +53,7 @@ const POPULATE_DETAIL = [
   { path: 'assignedTo', select: 'name avatarColor avatarUrl email' },
   { path: 'reportedBy', select: 'name avatarColor avatarUrl email' },
   { path: 'updates.author', select: 'name avatarColor avatarUrl' },
+  { path: 'checklist.doneBy', select: 'name' },
 ];
 
 const SORTS = {
@@ -184,7 +202,10 @@ const getTicket = async (req, res, next) => {
 // @route   POST /api/tickets
 const createTicket = async (req, res, next) => {
   try {
-    const { project, title, description, type, priority, assignedTo, attachmentUrls, tags, dueDate, files } = req.body;
+    const { project, title, description, priority, assignedTo, attachmentUrls, tags, dueDate, files } = req.body;
+    const { billable, estimateHours, fixedPrice, checklist } = req.body;
+    const company = await Company.findById(req.user.company);
+    const type = resolveType(company, req.body.type, { strict: true });
 
     if (!project || !title || !description || !type) {
       res.status(400);
@@ -202,9 +223,15 @@ const createTicket = async (req, res, next) => {
       throw new Error('Assignee is not part of your team');
     }
 
+    const { values: customFields, missing } = cleanCustomFields(company, req.body.customFields, { checkRequired: true });
+    if (missing.length) {
+      res.status(400);
+      throw new Error(`Please fill in: ${missing.join(', ')}`);
+    }
+
     const ticketNumber = await getNextTicketNumber(req.user.company);
 
-    const ticket = await Ticket.create({
+    const ticket = new Ticket({
       company: req.user.company,
       client: projectDoc.client,
       project,
@@ -212,6 +239,13 @@ const createTicket = async (req, res, next) => {
       title,
       description,
       type,
+      customFields,
+      billable: billable !== false,
+      estimateHours: Number(estimateHours) > 0 ? Number(estimateHours) : undefined,
+      fixedPrice: Number(fixedPrice) > 0 ? Number(fixedPrice) : undefined,
+      checklist: Array.isArray(checklist)
+        ? checklist.filter((c) => c && String(c.text || c).trim()).slice(0, 100).map((c) => ({ text: String(c.text || c).trim() }))
+        : [],
       priority: priority || 'medium',
       assignedTo: assignedTo || null,
       reportedBy: req.user._id,
@@ -222,13 +256,34 @@ const createTicket = async (req, res, next) => {
       files: files || [],
       updates: [{ author: req.user._id, message: 'Ticket created' }],
     });
+    ticket.createdAt = new Date();
+    applySla(ticket, company);
+    await ticket.save();
 
+    logActivity({
+      company: req.user.company,
+      actor: req.user,
+      entityType: 'ticket',
+      entityId: ticket._id,
+      entityLabel: `#${ticket.ticketNumber}`,
+      action: 'ticket.created',
+      summary: `created #${ticket.ticketNumber} “${ticket.title}”`,
+      link: `/tickets/${ticket._id}`,
+    });
+
+    await runAutomations('ticket.created', ticket._id, req.user.company);
     const populated = await Ticket.findById(ticket._id).populate(POPULATE_LIST);
 
-    if (assignedTo) {
+    if (populated.assignedTo) {
       notifyAssignment(req.user.company, populated).catch((err) =>
         console.error('Failed to send assignment notification:', err.message)
       );
+      notify(req.user.company, populated.assignedTo._id, {
+        kind: 'assigned',
+        title: `#${ticket.ticketNumber} assigned to you`,
+        body: ticket.title,
+        link: `/tickets/${ticket._id}`,
+      }, { exclude: req.user._id });
     }
 
     res.status(201).json(populated);
@@ -260,10 +315,29 @@ const updateTicket = async (req, res, next) => {
       ticket.updates.push({ author: req.user._id, message: 'Unassigned', isInternal: true });
     }
 
+    const company = await Company.findById(req.user.company);
+    if (req.body.type !== undefined && !resolveType(company, req.body.type, { strict: true })) {
+      res.status(400);
+      throw new Error('Unknown ticket type for this workspace');
+    }
+    const priorityChanged = req.body.priority !== undefined && req.body.priority !== ticket.priority;
+
     const fields = ['title', 'description', 'type', 'priority', 'assignedTo', 'attachmentUrls', 'tags', 'dueDate'];
     fields.forEach((f) => {
       if (req.body[f] !== undefined) ticket[f] = req.body[f] === '' ? null : req.body[f];
     });
+    if (req.body.billable !== undefined) ticket.billable = !!req.body.billable;
+    ['estimateHours', 'fixedPrice'].forEach((f) => {
+      if (req.body[f] !== undefined) ticket[f] = Number(req.body[f]) > 0 ? Number(req.body[f]) : undefined;
+    });
+    if (req.body.customFields && typeof req.body.customFields === 'object') {
+      const { values } = cleanCustomFields(company, { ...(ticket.customFields || {}), ...req.body.customFields });
+      // Explicitly cleared fields are removed.
+      Object.entries(req.body.customFields).forEach(([k, v]) => (v === '' || v === null) && delete values[k]);
+      ticket.customFields = values;
+      ticket.markModified('customFields');
+    }
+    if (priorityChanged && !['resolved', 'closed'].includes(ticket.status)) applySla(ticket, company);
 
     let statusChanged = false;
     if (req.body.status && STATUSES.includes(req.body.status) && req.body.status !== ticket.status) {
@@ -278,12 +352,28 @@ const updateTicket = async (req, res, next) => {
 
     ticket.lastActivityAt = new Date();
     await ticket.save();
+
+    const changed = Object.keys(req.body).filter((k) => !['customFields'].includes(k));
+    if (changed.length || req.body.customFields) {
+      STATUS_EVENT(req, ticket, statusChanged
+        ? `moved #${ticket.ticketNumber} to ${STATUS_LABELS[ticket.status]}`
+        : `updated ${[...changed, ...(req.body.customFields ? ['custom fields'] : [])].join(', ')} on #${ticket.ticketNumber}`);
+    }
+    if (statusChanged) await runAutomations('ticket.status_changed', ticket._id, req.user.company);
+    if (assignmentChanged && ticket.assignedTo) await runAutomations('ticket.assigned', ticket._id, req.user.company);
+
     const populated = await Ticket.findById(ticket._id).populate(POPULATE_DETAIL);
 
     if (assignmentChanged && ticket.assignedTo) {
       notifyAssignment(req.user.company, populated).catch((err) =>
         console.error('Failed to send assignment notification:', err.message)
       );
+      notify(req.user.company, ticket.assignedTo, {
+        kind: 'assigned',
+        title: `#${ticket.ticketNumber} assigned to you`,
+        body: ticket.title,
+        link: `/tickets/${ticket._id}`,
+      }, { exclude: req.user._id });
     }
     if (statusChanged) notifyStatus(req.user.company, ticket, req.body.status);
 
@@ -321,7 +411,16 @@ const bulkUpdateTickets = async (req, res, next) => {
       else if (assignee) ticket.assignedTo = assignee._id;
       ticket.lastActivityAt = new Date();
       await ticket.save();
+      if (status) await runAutomations('ticket.status_changed', ticket._id, req.user.company);
     }
+    logActivity({
+      company: req.user.company,
+      actor: req.user,
+      entityType: 'ticket',
+      action: 'ticket.bulk',
+      summary: `bulk-updated ${tickets.length} ticket${tickets.length === 1 ? '' : 's'} (${[status && `status ${status}`, priority && `priority ${priority}`, assignedTo && 'assignee'].filter(Boolean).join(', ')})`,
+      link: '/tickets',
+    });
     res.json({ updated: tickets.length });
   } catch (error) {
     next(error);
@@ -330,8 +429,10 @@ const bulkUpdateTickets = async (req, res, next) => {
 
 function applyStatus(ticket, status) {
   ticket.status = status;
-  if (status === 'resolved' || status === 'closed') ticket.resolvedAt = new Date();
-  else ticket.resolvedAt = undefined;
+  if (status === 'resolved' || status === 'closed') {
+    ticket.resolvedAt = ticket.resolvedAt || new Date();
+    recordResolution(ticket);
+  } else ticket.resolvedAt = undefined;
 }
 
 async function notifyAssignment(companyId, ticket) {
@@ -385,12 +486,19 @@ const addTicketUpdate = async (req, res, next) => {
       applyStatus(ticket, status);
     }
 
-    // A public reply from the team clears the "awaiting reply" flag.
-    if (!isInternal) ticket.awaitingTeamReply = false;
+    // A public reply from the team clears the "awaiting reply" flag and counts as first response.
+    if (!isInternal) {
+      ticket.awaitingTeamReply = false;
+      if (message?.trim()) recordFirstResponse(ticket);
+    }
     ticket.lastActivityAt = new Date();
     ticket.updates.push(update);
     await ticket.save();
 
+    STATUS_EVENT(req, ticket, statusChanging
+      ? `moved #${ticket.ticketNumber} to ${STATUS_LABELS[status]}${message?.trim() ? ' with a note' : ''}`
+      : `${isInternal ? 'added an internal note to' : 'replied on'} #${ticket.ticketNumber}`);
+    if (statusChanging) await runAutomations('ticket.status_changed', ticket._id, req.user.company);
     if (statusChanging && !isInternal) notifyStatus(req.user.company, ticket, status, message?.trim());
 
     const populated = await Ticket.findById(ticket._id).populate(POPULATE_DETAIL);
@@ -439,6 +547,15 @@ const deleteTicket = async (req, res, next) => {
       throw new Error('Ticket not found');
     }
     await ticket.deleteOne();
+    logActivity({
+      company: req.user.company,
+      actor: req.user,
+      entityType: 'ticket',
+      entityId: ticket._id,
+      entityLabel: `#${ticket.ticketNumber}`,
+      action: 'ticket.deleted',
+      summary: `deleted #${ticket.ticketNumber} “${ticket.title}”`,
+    });
     res.json({ message: 'Ticket removed' });
   } catch (error) {
     next(error);
@@ -488,8 +605,11 @@ const replyToTicket = async (req, res, next) => {
     }
     ticket.updates.push(update);
     ticket.awaitingTeamReply = false;
+    recordFirstResponse(ticket);
     ticket.lastActivityAt = new Date();
     await ticket.save();
+    STATUS_EVENT(req, ticket, `emailed a reply on #${ticket.ticketNumber}`);
+    if (update.statusChangeTo) await runAutomations('ticket.status_changed', ticket._id, req.user.company);
 
     const populated = await Ticket.findById(ticket._id).populate(POPULATE_DETAIL);
     res.json(populated);
@@ -498,7 +618,85 @@ const replyToTicket = async (req, res, next) => {
   }
 };
 
+// ───────── Checklist ─────────
+
+async function loadOwnTicket(req, res) {
+  const ticket = await Ticket.findOne({ _id: req.params.id, company: req.user.company });
+  if (!ticket) {
+    res.status(404);
+    throw new Error('Ticket not found');
+  }
+  return ticket;
+}
+
+// @route   POST /api/tickets/:id/checklist   { text } or { items: [text…] }
+const addChecklistItem = async (req, res, next) => {
+  try {
+    const ticket = await loadOwnTicket(req, res);
+    const items = (Array.isArray(req.body.items) ? req.body.items : [req.body.text])
+      .map((t) => String(t || '').trim())
+      .filter(Boolean)
+      .slice(0, 50);
+    if (!items.length) {
+      res.status(400);
+      throw new Error('Checklist item text is required');
+    }
+    if (ticket.checklist.length + items.length > 200) {
+      res.status(400);
+      throw new Error('Checklist is full');
+    }
+    items.forEach((text) => ticket.checklist.push({ text }));
+    ticket.lastActivityAt = new Date();
+    await ticket.save();
+    res.status(201).json((await Ticket.findById(ticket._id).populate(POPULATE_DETAIL)));
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @route   PUT /api/tickets/:id/checklist/:itemId   { text?, done? }
+const updateChecklistItem = async (req, res, next) => {
+  try {
+    const ticket = await loadOwnTicket(req, res);
+    const item = ticket.checklist.id(req.params.itemId);
+    if (!item) {
+      res.status(404);
+      throw new Error('Checklist item not found');
+    }
+    if (req.body.text !== undefined && String(req.body.text).trim()) item.text = String(req.body.text).trim();
+    if (typeof req.body.done === 'boolean' && req.body.done !== item.done) {
+      item.done = req.body.done;
+      item.doneBy = req.body.done ? req.user._id : undefined;
+      item.doneAt = req.body.done ? new Date() : undefined;
+      if (req.body.done) {
+        const doneCount = ticket.checklist.filter((c) => c.done).length;
+        STATUS_EVENT(req, ticket, `checked “${item.text}” on #${ticket.ticketNumber} (${doneCount}/${ticket.checklist.length})`);
+      }
+    }
+    ticket.lastActivityAt = new Date();
+    await ticket.save();
+    res.json(await Ticket.findById(ticket._id).populate(POPULATE_DETAIL));
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @route   DELETE /api/tickets/:id/checklist/:itemId
+const deleteChecklistItem = async (req, res, next) => {
+  try {
+    const ticket = await loadOwnTicket(req, res);
+    ticket.checklist.pull({ _id: req.params.itemId });
+    await ticket.save();
+    res.json(await Ticket.findById(ticket._id).populate(POPULATE_DETAIL));
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
+  addChecklistItem,
+  updateChecklistItem,
+  deleteChecklistItem,
   getTickets,
   getTicketCounts,
   getTicket,

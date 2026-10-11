@@ -84,7 +84,7 @@ const getDashboard = async (req, res, next) => {
 
     const statusMap = { open: 0, in_progress: 0, in_review: 0, resolved: 0, closed: 0, reopened: 0 };
     ticketsByStatus.forEach((s) => (statusMap[s._id] = s.count));
-    const typeMap = { bug_report: 0, feature_request: 0, change_request: 0, support_ticket: 0 };
+    const typeMap = {};
     ticketsByType.forEach((t) => (typeMap[t._id] = t.count));
     const priorityMap = { low: 0, medium: 0, high: 0, critical: 0 };
     ticketsByPriority.forEach((p) => (priorityMap[p._id] = p.count));

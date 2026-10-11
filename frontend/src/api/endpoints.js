@@ -88,3 +88,62 @@ export const uploadPublicFiles = (formData) =>
   publicApi.post('/public/uploads', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 export const getPublicTicket = (token) => publicApi.get(`/public/tickets/${token}`);
 export const addPublicComment = (token, data) => publicApi.post(`/public/tickets/${token}/comments`, data);
+
+// Workspace & billing settings
+export const getWorkspace = () => api.get('/company/workspace');
+export const updateWorkspace = (data) => api.put('/company/workspace', data);
+export const applyWorkspaceTemplate = (data) => api.post('/company/workspace/template', data);
+export const updateBilling = (data) => api.put('/company/billing', data);
+
+// Ticket checklist
+export const addChecklistItem = (id, data) => api.post(`/tickets/${id}/checklist`, data);
+export const updateChecklistItem = (id, itemId, data) => api.put(`/tickets/${id}/checklist/${itemId}`, data);
+export const deleteChecklistItem = (id, itemId) => api.delete(`/tickets/${id}/checklist/${itemId}`);
+
+// Time tracking
+export const getTimeEntries = (params) => api.get('/time', { params });
+export const getRunningTimer = () => api.get('/time/running');
+export const getTimeSummary = (params) => api.get('/time/summary', { params });
+export const startTimer = (data) => api.post('/time/start', data);
+export const stopTimer = () => api.post('/time/stop');
+export const createTimeEntry = (data) => api.post('/time', data);
+export const updateTimeEntry = (id, data) => api.put(`/time/${id}`, data);
+export const deleteTimeEntry = (id) => api.delete(`/time/${id}`);
+
+// Invoices
+export const getInvoices = (params) => api.get('/invoices', { params });
+export const getUnbilled = (params) => api.get('/invoices/unbilled', { params });
+export const getInvoice = (id) => api.get(`/invoices/${id}`);
+export const createInvoice = (data) => api.post('/invoices', data);
+export const updateInvoice = (id, data) => api.put(`/invoices/${id}`, data);
+export const deleteInvoice = (id) => api.delete(`/invoices/${id}`);
+export const addInvoicePayment = (id, data) => api.post(`/invoices/${id}/payments`, data);
+export const deleteInvoicePayment = (id, paymentId) => api.delete(`/invoices/${id}/payments/${paymentId}`);
+export const sendInvoice = (id, data) => api.post(`/invoices/${id}/send`, data);
+export const getInvoicePdf = (id) => api.get(`/invoices/${id}/pdf`, { responseType: 'blob' });
+export const getPublicInvoice = (token) => publicApi.get(`/public/invoices/${token}`);
+
+// Automations
+export const getAutomations = () => api.get('/automations');
+export const createAutomation = (data) => api.post('/automations', data);
+export const updateAutomation = (id, data) => api.put(`/automations/${id}`, data);
+export const deleteAutomation = (id) => api.delete(`/automations/${id}`);
+export const testAutomation = (id, data) => api.post(`/automations/${id}/test`, data);
+
+// Reports
+export const getReport = (params) => api.get('/reports/overview', { params });
+export const exportReport = (params) => api.get('/reports/export', { params, responseType: 'blob' });
+
+// Activity, notifications, saved replies
+export const getActivity = (params) => api.get('/activity', { params });
+export const getNotifications = () => api.get('/notifications');
+export const getUnreadCount = () => api.get('/notifications/unread');
+export const markNotificationsRead = (id) => api.post(id ? `/notifications/${id}/read` : '/notifications/read');
+export const getSavedReplies = () => api.get('/saved-replies');
+export const createSavedReply = (data) => api.post('/saved-replies', data);
+export const updateSavedReply = (id, data) => api.put(`/saved-replies/${id}`, data);
+export const deleteSavedReply = (id) => api.delete(`/saved-replies/${id}`);
+export const useSavedReply = (id) => api.post(`/saved-replies/${id}/use`);
+
+// Public CSAT
+export const submitCsat = (token, data) => publicApi.post(`/public/tickets/${token}/csat`, data);

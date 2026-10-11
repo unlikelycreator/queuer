@@ -54,6 +54,10 @@
     --chart-4: 38 92% 50%;
     --chart-5: 266 60% 60%;
 
+    /* Two-series data-viz pair, validated for colour-vision deficiency on both surfaces. */
+    --viz-1: #0284c7;
+    --viz-2: #059669;
+
     --radius: 0.9rem;
     --shadow-color: 160 40% 12%;
   }
@@ -102,6 +106,9 @@
     --chart-3: 186 60% 50%;
     --chart-4: 38 92% 56%;
     --chart-5: 266 70% 70%;
+
+    --viz-1: #3987e5;
+    --viz-2: #1baf7a;
 
     --shadow-color: 0 0% 0%;
   }

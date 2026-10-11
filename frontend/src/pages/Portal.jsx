@@ -28,7 +28,7 @@ import Pagination from '@/components/shared/Pagination';
 import PortalChrome, { readIdentity, saveIdentity } from '@/components/portal/PortalChrome';
 import RequestForm from '@/components/portal/RequestForm';
 import PortalPlan from '@/components/portal/PortalPlan';
-import { TICKET_STATUSES } from '@/lib/constants';
+import { TICKET_STATUSES, setTicketTypes } from '@/lib/constants';
 import { cn, formatDate, timeAgo, formatDuration } from '@/lib/utils';
 
 export default function Portal() {
@@ -43,7 +43,10 @@ export default function Portal() {
     () =>
       api
         .getPortal(token)
-        .then((res) => setPortal(res.data))
+        .then((res) => {
+          setTicketTypes(res.data.ticketTypes);
+          setPortal(res.data);
+        })
         .catch(() => setError(true)),
     [token]
   );
@@ -160,7 +163,7 @@ export default function Portal() {
       {/* Tabs */}
       <div className="mb-5 flex items-center gap-1 rounded-xl border border-border bg-card p-1 shadow-sm sm:w-fit">
         {[
-          { value: 'requests', label: 'Requests', icon: Inbox },
+          { value: 'requests', label: portal.terminology?.tickets || 'Requests', icon: Inbox },
           ...(settings.showTodos ? [{ value: 'plan', label: 'Plan', icon: ListTodo }] : []),
           { value: 'new', label: 'New request', icon: Plus },
         ].map((t) => (
@@ -190,6 +193,7 @@ export default function Portal() {
             </p>
             <RequestForm
               token={token}
+              customFields={portal.customFields || []}
               onSubmitted={(r) => {
                 setSubmitted(r);
                 loadPortal();

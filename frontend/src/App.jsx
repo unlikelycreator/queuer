@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { WorkspaceProvider, useWorkspace } from '@/context/WorkspaceContext';
+import { TimerProvider } from '@/context/TimerContext';
 import AppLayout from '@/components/layout/AppLayout';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import { LogoMark } from '@/components/shared/Logo';
@@ -27,6 +29,13 @@ const Portal = lazy(() => import('@/pages/Portal'));
 const PublicForm = lazy(() => import('@/pages/PublicForm'));
 const PublicTicketStatus = lazy(() => import('@/pages/PublicTicketStatus'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
+const Insights = lazy(() => import('@/pages/Insights'));
+const TimeTracking = lazy(() => import('@/pages/TimeTracking'));
+const Invoices = lazy(() => import('@/pages/Invoices'));
+const InvoiceDetail = lazy(() => import('@/pages/InvoiceDetail'));
+const PublicInvoice = lazy(() => import('@/pages/PublicInvoice'));
+const Automations = lazy(() => import('@/pages/Automations'));
+const ActivityLog = lazy(() => import('@/pages/ActivityLog'));
 
 function FullScreenLoader() {
   return (
@@ -49,10 +58,18 @@ function PageLoader() {
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
+  const { ready } = useWorkspace();
   const location = useLocation();
   if (loading) return <FullScreenLoader />;
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
+  // Wait for the workspace (ticket types, wording) so every page renders with the right labels.
+  if (!ready) return <FullScreenLoader />;
   return children;
+}
+
+function AdminRoute({ children }) {
+  const { isAdmin } = useAuth();
+  return isAdmin ? children : <Navigate to="/" replace />;
 }
 
 function PublicRoute({ children }) {
@@ -76,6 +93,8 @@ export default function App() {
     <ThemeProvider>
       <BrowserRouter>
         <AuthProvider>
+          <WorkspaceProvider>
+          <TimerProvider>
           <Toaster
             position="top-right"
             toastOptions={{
@@ -103,6 +122,7 @@ export default function App() {
                 <Route path="/portal/:token" element={<Portal />} />
                 <Route path="/public/form/:token" element={<PublicForm />} />
                 <Route path="/public/ticket/:token" element={<PublicTicketStatus />} />
+                <Route path="/public/invoice/:token" element={<PublicInvoice />} />
 
                 <Route
                   path="/"
@@ -122,12 +142,20 @@ export default function App() {
                   <Route path="team" element={<ShellPage><Team /></ShellPage>} />
                   <Route path="settings" element={<ShellPage><Settings /></ShellPage>} />
                   <Route path="account" element={<ShellPage><Account /></ShellPage>} />
+                  <Route path="insights" element={<ShellPage><Insights /></ShellPage>} />
+                  <Route path="time" element={<ShellPage><TimeTracking /></ShellPage>} />
+                  <Route path="invoices" element={<ShellPage><AdminRoute><Invoices /></AdminRoute></ShellPage>} />
+                  <Route path="invoices/:id" element={<ShellPage><AdminRoute><InvoiceDetail /></AdminRoute></ShellPage>} />
+                  <Route path="automations" element={<ShellPage><Automations /></ShellPage>} />
+                  <Route path="activity" element={<ShellPage><ActivityLog /></ShellPage>} />
                 </Route>
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
           </ErrorBoundary>
+          </TimerProvider>
+          </WorkspaceProvider>
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>

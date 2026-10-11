@@ -11,6 +11,7 @@ const rateLimit = require('express-rate-limit');
 const connectDB = require('./src/config/db');
 const { notFound, errorHandler } = require('./src/middleware/errorHandler');
 const { startEmailPolling, stopEmailPolling } = require('./src/services/emailPoller');
+const { startScheduler, stopScheduler } = require('./src/services/scheduler');
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -102,6 +103,14 @@ app.use('/api/dashboard', require('./src/routes/dashboardRoutes'));
 app.use('/api/company', require('./src/routes/companyRoutes'));
 app.use('/api/uploads', require('./src/routes/uploadRoutes'));
 app.use('/api/search', require('./src/routes/searchRoutes'));
+app.use('/api/time', require('./src/routes/timeRoutes'));
+app.use('/api/invoices', require('./src/routes/invoiceRoutes'));
+app.use('/api/automations', require('./src/routes/automationRoutes'));
+app.use('/api/reports', require('./src/routes/reportRoutes'));
+const feeds = require('./src/routes/feedRoutes');
+app.use('/api/activity', feeds.activity);
+app.use('/api/notifications', feeds.notifications);
+app.use('/api/saved-replies', feeds.replies);
 
 // Optionally serve the built frontend from the same server (single-container deploys).
 const frontendDist = process.env.FRONTEND_DIST || path.join(__dirname, '..', 'frontend', 'dist');
@@ -118,12 +127,14 @@ const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   console.log(`ZoopDesk API running on port ${PORT}`);
   if (process.env.EMAIL_POLLING !== 'false') startEmailPolling();
+  if (process.env.SCHEDULER !== 'false') startScheduler();
 });
 
 // Graceful shutdown so in-flight requests finish during deploys/restarts.
 function shutdown(signal) {
   console.log(`${signal} received — shutting down gracefully`);
   stopEmailPolling?.();
+  stopScheduler();
   server.close(() => {
     mongoose.connection.close(false).finally(() => process.exit(0));
   });

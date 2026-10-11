@@ -15,7 +15,15 @@ import {
   ShieldCheck,
   Plus,
   ShieldAlert,
+  Timer,
+  BarChart3,
+  Receipt,
+  Zap,
+  History,
 } from 'lucide-react';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import NotificationBell from '@/components/shared/NotificationBell';
+import TimerWidget from '@/components/shared/TimerWidget';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 import {
@@ -34,27 +42,41 @@ import ThemeToggle from '@/components/shared/ThemeToggle';
 import { Kbd } from '@/components/shared/Common';
 import { LogoMark } from '@/components/shared/Logo';
 
-const navSections = [
-  {
-    label: 'Workspace',
-    items: [
-      { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-      { to: '/tickets', label: 'Tickets', icon: Ticket },
-      { to: '/projects', label: 'Projects', icon: FolderKanban },
-      { to: '/clients', label: 'Clients', icon: Users2 },
-    ],
-  },
-  {
-    label: 'Organisation',
-    items: [
-      { to: '/team', label: 'Team', icon: UserCog },
-      { to: '/settings', label: 'Settings', icon: SettingsIcon },
-    ],
-  },
-];
+function buildNav(terms, isAdmin) {
+  return [
+    {
+      label: 'Workspace',
+      items: [
+        { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+        { to: '/tickets', label: terms.tickets, icon: Ticket },
+        { to: '/projects', label: terms.projects, icon: FolderKanban },
+        { to: '/clients', label: terms.clients, icon: Users2 },
+        { to: '/time', label: 'Time', icon: Timer },
+      ],
+    },
+    {
+      label: 'Business',
+      items: [
+        { to: '/insights', label: 'Insights', icon: BarChart3 },
+        ...(isAdmin ? [{ to: '/invoices', label: 'Invoices', icon: Receipt }] : []),
+        { to: '/automations', label: 'Automations', icon: Zap },
+      ],
+    },
+    {
+      label: 'Organisation',
+      items: [
+        { to: '/team', label: 'Team', icon: UserCog },
+        { to: '/activity', label: 'Activity', icon: History },
+        { to: '/settings', label: 'Settings', icon: SettingsIcon },
+      ],
+    },
+  ];
+}
 
 export default function AppLayout() {
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
+  const { terms } = useWorkspace();
+  const navSections = buildNav(terms, isAdmin);
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -119,7 +141,7 @@ export default function AppLayout() {
           </button>
         </div>
 
-        <nav className="relative flex-1 space-y-6 overflow-y-auto px-3 py-4 scrollbar-none">
+        <nav className="relative flex-1 space-y-5 overflow-y-auto px-3 py-3 scrollbar-none">
           {navSections.map((section) => (
             <div key={section.label}>
               <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-sidebar-muted/80">
@@ -211,14 +233,16 @@ export default function AppLayout() {
           {!user?.twoFactor?.enabled && (
             <button
               onClick={() => navigate('/account')}
-              className="hidden items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-500/15 dark:text-amber-300 md:flex"
+              className="hidden items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-500/15 dark:text-amber-300 xl:flex"
             >
               <ShieldAlert className="h-3.5 w-3.5" /> Enable 2FA
             </button>
           )}
+          <TimerWidget />
+          <NotificationBell />
           <ThemeToggle />
           <Button variant="gradient" size="sm" onClick={() => navigate('/tickets?new=1')}>
-            <Plus /> <span className="hidden sm:inline">New ticket</span>
+            <Plus /> <span className="hidden sm:inline">New {terms.ticket.toLowerCase()}</span>
           </Button>
         </header>
 

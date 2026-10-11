@@ -12,6 +12,8 @@ import {
   ListTodo,
   Sun,
   ArrowRight,
+  Sparkles,
+  BarChart3,
   FolderKanban,
   CheckCheck,
 } from 'lucide-react';
@@ -27,6 +29,9 @@ import { StatTile } from '@/components/shared/Common';
 import { timeAgo, formatDuration, cn, dayKey, friendlyDay, storedDayKey, apiError } from '@/lib/utils';
 import { TICKET_STATUSES, TICKET_TYPES, ACTIVE_STATUSES } from '@/lib/constants';
 import { useAuth } from '@/context/AuthContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { TemplatePicker } from '@/components/settings/WorkspaceSettings';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 function greeting() {
   const h = new Date().getHours();
@@ -36,7 +41,9 @@ function greeting() {
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const { workspace, terms } = useWorkspace();
+  const [setupOpen, setSetupOpen] = useState(false);
   const [data, setData] = useState(null);
   const [myDay, setMyDay] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -123,15 +130,33 @@ export default function Dashboard() {
           <div className="flex gap-2">
             <Button asChild variant="spark">
               <Link to="/tickets?quick=mine">
-                My tickets <ArrowRight />
+                My {terms.tickets.toLowerCase()} <ArrowRight />
               </Link>
             </Button>
             <Button asChild variant="outline" className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white">
-              <Link to="/tickets?new=1">New ticket</Link>
+              <Link to="/insights">
+                <BarChart3 /> Insights
+              </Link>
             </Button>
           </div>
         </div>
       </div>
+
+      {isAdmin && !workspace?.configured && (
+        <button
+          onClick={() => setSetupOpen(true)}
+          className="flex w-full items-center gap-4 rounded-2xl border border-primary/30 bg-accent/40 p-4 text-left transition-colors hover:bg-accent/60"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand text-white">
+            <Sparkles className="h-5 w-5" />
+          </span>
+          <span className="flex-1">
+            <span className="block font-semibold">Tailor ZoopDesk to your team</span>
+            <span className="block text-sm text-muted-foreground">Software, QA, support, marketing or agency — pick one to set wording, request types, fields and SLAs in one click.</span>
+          </span>
+          <ArrowRight className="h-4 w-4 text-primary" />
+        </button>
+      )}
 
       {alerts.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -374,6 +399,16 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>What will your team use ZoopDesk for?</DialogTitle>
+            <DialogDescription>We'll set the wording, request types, custom fields and SLA targets. Everything stays editable in Settings → Workspace.</DialogDescription>
+          </DialogHeader>
+          <TemplatePicker compact onApplied={() => setSetupOpen(false)} />
+        </DialogContent>
+      </Dialog>
 
       {data.recentProjects.length > 0 && (
         <div>

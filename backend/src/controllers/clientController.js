@@ -1,6 +1,7 @@
 const Client = require('../models/Client');
 const Project = require('../models/Project');
 const Ticket = require('../models/Ticket');
+const { logActivity } = require('../services/activity');
 const { escapeRegex } = require('../utils/sanitize');
 const { getPagination } = require('../utils/pagination');
 
@@ -84,6 +85,7 @@ const createClient = async (req, res, next) => {
       notes,
       createdBy: req.user._id,
     });
+    logActivity({ company: req.user.company, actor: req.user, entityType: 'client', entityId: client._id, entityLabel: client.name, action: 'client.created', summary: `added client ${client.name}`, link: `/clients/${client._id}` });
     res.status(201).json(client);
   } catch (error) {
     next(error);

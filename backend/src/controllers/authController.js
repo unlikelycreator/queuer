@@ -10,6 +10,20 @@ const { generateSecret, verifyTotp, otpauthUrl } = require('../utils/totp');
 const { sendSystemMail, appUrl } = require('../services/mailSender');
 const { escapeHtml } = require('../utils/sanitize');
 const { renderEmail } = require('../services/emailTemplate');
+const { TEMPLATES, slaPolicies } = require('../config/workspaceTemplates');
+
+// Applies a workspace template to a brand-new company (no tickets to preserve yet).
+function seedWorkspace(company, key) {
+  const tpl = TEMPLATES[key];
+  if (!tpl) return;
+  company.workspace.template = tpl.key;
+  company.workspace.terminology = { ...tpl.terminology };
+  company.workspace.ticketTypes = tpl.ticketTypes.map((t) => ({ ...t }));
+  company.workspace.customFields = tpl.customFields.map((f) => ({ options: [], ...f }));
+  const policies = slaPolicies(tpl);
+  ['low', 'medium', 'high', 'critical'].forEach((p) => (company.sla[p] = policies[p]));
+  company.workspace.configured = true;
+}
 
 const MIN_PASSWORD = 8;
 const MAX_FAILED_LOGINS = 8;
@@ -105,6 +119,7 @@ const registerOwner = async (req, res, next) => {
     });
 
     company.owner = user._id;
+    seedWorkspace(company, req.body.template);
     await company.save();
 
     res.status(201).json(await sessionPayload(user));

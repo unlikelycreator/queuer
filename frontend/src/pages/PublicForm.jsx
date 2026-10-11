@@ -5,6 +5,7 @@ import * as api from '@/api/endpoints';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import RequestForm from '@/components/portal/RequestForm';
+import { setTicketTypes } from '@/lib/constants';
 
 /** Compact, embeddable (iframe) version of the portal's request form. */
 export default function PublicForm() {
@@ -16,7 +17,10 @@ export default function PublicForm() {
   useEffect(() => {
     api
       .getPublicForm(token)
-      .then((res) => setMeta(res.data))
+      .then((res) => {
+        setTicketTypes(res.data.ticketTypes);
+        setMeta(res.data);
+      })
       .catch(() => setNotFound(true));
   }, [token]);
 
@@ -64,7 +68,7 @@ export default function PublicForm() {
                 For <span className="font-medium text-foreground">{meta.projectName}</span>
               </p>
             </div>
-            <RequestForm token={token} compact onSubmitted={setResult} />
+            <RequestForm token={token} compact customFields={meta.customFields || []} onSubmitted={setResult} />
           </>
         )}
       </Card>

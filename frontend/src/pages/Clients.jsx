@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Plus, Search, Users2, Mail, Phone, FolderKanban, Ticket, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import * as api from '@/api/endpoints';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,6 +29,7 @@ const emptyForm = { name: '', contactPerson: '', email: '', phone: '', companyWe
 const LIMIT = 12;
 
 export default function Clients() {
+  const { terms } = useWorkspace();
   const [clients, setClients] = useState([]);
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0, limit: LIMIT });
   const [loading, setLoading] = useState(true);
@@ -118,7 +120,7 @@ export default function Clients() {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader eyebrow="Accounts" title="Clients" description="Manage your client accounts and their contact details">
+      <PageHeader eyebrow="Accounts" title={terms.clients} description="Manage your client accounts and their contact details">
         <Button variant="gradient" onClick={openCreate}>
           <Plus className="h-4 w-4" /> Add Client
         </Button>

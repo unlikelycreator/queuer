@@ -4,6 +4,7 @@ const router = express.Router();
 const { upload } = require('../config/multer');
 const { uploadFiles } = require('../controllers/uploadController');
 const p = require('../controllers/publicController');
+const inv = require('../controllers/invoiceController');
 
 // Anonymous write endpoints get a tighter limit to keep spam out of the ticket queue.
 const writeLimiter = rateLimit({
@@ -33,6 +34,11 @@ router.post('/uploads', writeLimiter, upload.array('files', 5), uploadFiles);
 // Ticket tracking + client replies
 router.get('/tickets/:token', p.getPublicTicket);
 router.post('/tickets/:token/comments', writeLimiter, p.addPublicComment);
+router.post('/tickets/:token/csat', writeLimiter, p.submitCsat);
+
+// Client-facing invoice view + PDF download
+router.get('/invoices/:token', inv.getPublicInvoice);
+router.get('/invoices/:token/pdf', inv.getPublicInvoicePdf);
 
 // Inbound email -> ticket webhook (Mailgun/SendGrid/Postmark inbound routing)
 router.post('/email/:companyId/:secret', express.urlencoded({ extended: true }), p.emailWebhook);

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Plus, Search, FolderKanban, Ticket, MoreVertical, Pencil, Trash2, Calendar, ListTodo } from 'lucide-react';
 import * as api from '@/api/endpoints';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,6 +22,7 @@ import { formatDate } from '@/lib/utils';
 const LIMIT = 12;
 
 export default function Projects() {
+  const { terms } = useWorkspace();
   const [projects, setProjects] = useState([]);
   const [meta, setMeta] = useState({ page: 1, totalPages: 1, total: 0, limit: LIMIT });
   const [loading, setLoading] = useState(true);
@@ -73,7 +75,7 @@ export default function Projects() {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader eyebrow="Delivery" title="Projects" description="Track every project you're building for your clients">
+      <PageHeader eyebrow="Delivery" title={terms.projects} description="Track every project you're building for your clients">
         <Button
           variant="gradient"
           onClick={() => {

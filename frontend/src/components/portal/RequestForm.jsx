@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { AttachButton, PendingFiles } from '@/components/shared/FileChips';
 import useUploader from '@/lib/useUploader';
 import { TICKET_TYPES } from '@/lib/constants';
+import CustomFieldInput from '@/components/tickets/CustomFieldInput';
 import { cn, apiError } from '@/lib/utils';
 import { readIdentity, saveIdentity } from './PortalChrome';
 
@@ -19,12 +20,13 @@ const PRIORITIES = [
 ];
 
 /** The client-facing "new request" form, used inside the portal and the embeddable iframe. */
-export default function RequestForm({ token, onSubmitted, compact = false }) {
+export default function RequestForm({ token, onSubmitted, compact = false, customFields = [] }) {
   const identity = readIdentity();
+  const [values, setValues] = useState({});
   const [form, setForm] = useState({
     name: identity.name,
     email: identity.email,
-    type: 'bug_report',
+    type: TICKET_TYPES[0]?.value,
     priority: 'medium',
     title: '',
     description: '',
@@ -36,10 +38,11 @@ export default function RequestForm({ token, onSubmitted, compact = false }) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await api.submitPortalTicket(token, { ...form, files: uploader.files });
+      const res = await api.submitPortalTicket(token, { ...form, customFields: values, files: uploader.files });
       saveIdentity({ name: form.name, email: form.email });
       uploader.reset();
       setForm((f) => ({ ...f, title: '', description: '' }));
+      setValues({});
       onSubmitted?.(res.data);
     } catch (err) {
       toast.error(apiError(err, 'Failed to submit your request'));
@@ -52,7 +55,7 @@ export default function RequestForm({ token, onSubmitted, compact = false }) {
     <form onSubmit={submit} className="space-y-5">
       <div className="space-y-2">
         <Label>What do you need help with?</Label>
-        <div className={cn('grid gap-2', compact ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4')}>
+        <div className={cn('grid gap-2', compact ? 'grid-cols-2' : TICKET_TYPES.length === 5 ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4')}>
           {TICKET_TYPES.map((t) => (
             <button
               type="button"
@@ -113,6 +116,20 @@ export default function RequestForm({ token, onSubmitted, compact = false }) {
           placeholder="What happened? What did you expect? Steps to reproduce, links, browser/device…"
         />
       </div>
+
+      {customFields.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {customFields.map((f) => (
+            <div key={f.key} className={f.type === 'checkbox' ? 'flex items-center justify-between rounded-lg border border-border px-3 py-2' : 'space-y-1.5'}>
+              <Label>
+                {f.label}
+                {f.required && ' *'}
+              </Label>
+              <CustomFieldInput field={f} value={values[f.key]} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label>How urgent is it?</Label>

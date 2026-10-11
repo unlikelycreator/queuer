@@ -108,3 +108,62 @@ export function formatBytes(bytes) {
 export function apiError(err, fallback = 'Something went wrong') {
   return err?.response?.data?.message || err?.message || fallback;
 }
+
+export function formatMoney(amount, currency = 'USD') {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount || 0);
+  } catch {
+    return `${currency} ${(amount || 0).toFixed(2)}`;
+  }
+}
+
+export function formatMinutes(min) {
+  const m = Math.round(min || 0);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  return m % 60 ? `${h}h ${m % 60}m` : `${h}h`;
+}
+
+export function formatClock(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return `${h}:${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+}
+
+// Saves a Blob (e.g. a PDF or CSV from the API) with a filename.
+export function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+// Prints a PDF Blob via a hidden iframe (falls back to opening it in a new tab).
+export function printBlob(blob) {
+  const url = URL.createObjectURL(blob);
+  const frame = document.createElement('iframe');
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+  frame.src = url;
+  frame.onload = () => {
+    try {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    } catch {
+      window.open(url, '_blank');
+    }
+    setTimeout(() => {
+      frame.remove();
+      URL.revokeObjectURL(url);
+    }, 60000);
+  };
+  document.body.appendChild(frame);
+}
+
+export function pluralize(n, one, many) {
+  return `${n} ${n === 1 ? one : many || `${one}s`}`;
+}

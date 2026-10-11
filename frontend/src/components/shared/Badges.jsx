@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
-import { Globe, Mail, User } from 'lucide-react';
+import { Globe, Mail, User, Timer } from 'lucide-react';
 import {
-  TICKET_TYPES,
+  findType,
   TICKET_STATUSES,
   TICKET_PRIORITIES,
   PROJECT_STATUSES,
@@ -11,12 +11,41 @@ import {
 import { cn } from '@/lib/utils';
 
 export function TypeBadge({ type, short = false, className }) {
-  const meta = findMeta(TICKET_TYPES, type);
+  const meta = findType(type);
   const Icon = meta.icon;
   return (
-    <Badge variant={meta.badge} className={className}>
+    <Badge
+      variant="outline"
+      className={cn('border-transparent', className)}
+      style={{ backgroundColor: `${meta.color}1a`, color: meta.color, borderColor: `${meta.color}33` }}
+    >
       <Icon className="h-3 w-3" />
       {short ? meta.short : meta.label}
+    </Badge>
+  );
+}
+
+// SLA countdown / breach indicator for active tickets.
+export function SlaBadge({ ticket, className }) {
+  if (!ticket || ['resolved', 'closed'].includes(ticket.status)) return null;
+  const breached = ticket.slaResolutionBreached || ticket.slaResponseBreached;
+  const awaitingResponse = !ticket.firstResponseAt && ticket.slaResponseDueAt;
+  const due = awaitingResponse ? ticket.slaResponseDueAt : ticket.slaResolutionDueAt;
+  if (!due && !breached) return null;
+  const ms = due ? new Date(due) - Date.now() : -1;
+  const label = awaitingResponse ? 'Response' : 'Resolve';
+  if (breached || ms < 0) {
+    return (
+      <Badge variant="danger" className={className} title="SLA breached">
+        <Timer className="h-3 w-3" /> SLA breached
+      </Badge>
+    );
+  }
+  const h = ms / 36e5;
+  const text = h < 1 ? `${Math.max(1, Math.round(ms / 60000))}m` : h < 48 ? `${Math.round(h)}h` : `${Math.round(h / 24)}d`;
+  return (
+    <Badge variant={h < 4 ? 'warning' : 'slate'} className={className} title={`${label} due ${new Date(due).toLocaleString()}`}>
+      <Timer className="h-3 w-3" /> {label} in {text}
     </Badge>
   );
 }

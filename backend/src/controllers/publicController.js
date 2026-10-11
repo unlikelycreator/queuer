@@ -9,7 +9,22 @@ const { getNextTicketNumber } = require('../utils/ticketNumber');
 const { getPagination } = require('../utils/pagination');
 const { escapeRegex } = require('../utils/sanitize');
 
-const ALLOWED_TYPES = ['bug_report', 'feature_request', 'change_request', 'support_ticket'];
+const { resolveType, cleanCustomFields } = require('../utils/workspace');
+const { applySla } = require('../services/sla');
+const { runAutomations } = require('../services/automationEngine');
+const { logActivity } = require('../services/activity');
+const { notify } = require('../services/notify');
+
+// Public-facing workspace config: ticket types, portal-visible custom fields, wording.
+function publicWorkspace(company) {
+  const ws = company?.workspace || {};
+  return {
+    terminology: ws.terminology,
+    ticketTypes: ws.ticketTypes || [],
+    customFields: (ws.customFields || []).filter((f) => f.showInPortal),
+    csatEnabled: company?.csatEnabled !== false,
+  };
+}
 const ACTIVE = ['open', 'in_progress', 'in_review', 'reopened'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -64,7 +79,8 @@ function publicTicket(ticket, { withUpdates = false } = {}) {
     dueDate: ticket.dueDate,
     files: (ticket.files || []).map((f) => ({ url: f.url, originalName: f.originalName || f.filename, size: f.size })),
     updates: (ticket.updates || [])
-      .filter((u) => !u.isInternal)
+      // Internal bookkeeping ("Ticket created") isn't part of the client conversation.
+      .filter((u, i) => !u.isInternal && !(i === 0 && u.message === 'Ticket created'))
       .map((u) => ({
         _id: u._id,
         message: u.message,
@@ -115,6 +131,7 @@ const getPortal = async (req, res, next) => {
       clientName: project.client?.name,
       projectName: project.name,
       welcomeMessage: portal.welcomeMessage || '',
+      ...publicWorkspace(await Company.findById(project.company._id).select('workspace csatEnabled')),
       settings: {
         showAllTickets: portal.showAllTickets !== false,
         allowComments: portal.allowComments !== false,
@@ -170,7 +187,7 @@ const getPortalTickets = async (req, res, next) => {
     }
     if (status === 'active') filter.status = { $in: ACTIVE };
     else if (status === 'done') filter.status = { $in: ['resolved', 'closed'] };
-    if (ALLOWED_TYPES.includes(type)) filter.type = type;
+    if (type && /^[\w-]{1,60}$/.test(type)) filter.type = type;
     if (search) {
       const s = String(search).trim();
       const num = s.match(/^#?(\d+)$/);
@@ -209,15 +226,26 @@ const submitPortalTicket = async (req, res, next) => {
       throw new Error('Please enter a valid email address');
     }
 
+    const company = await Company.findById(project.company._id);
+    const { values: customFields, missing } = cleanCustomFields(company, req.body.customFields, {
+      portalOnly: true,
+      checkRequired: true,
+    });
+    if (missing.length) {
+      res.status(400);
+      throw new Error(`Please fill in: ${missing.join(', ')}`);
+    }
+
     const ticketNumber = await getNextTicketNumber(project.company._id);
-    const ticket = await Ticket.create({
+    const ticket = new Ticket({
       company: project.company._id,
       client: project.client._id,
       project: project._id,
       ticketNumber,
       title: String(title).trim().slice(0, 200),
       description: String(description).slice(0, 20000),
-      type: ALLOWED_TYPES.includes(type) ? type : 'support_ticket',
+      type: resolveType(company, type),
+      customFields,
       priority: ['low', 'medium', 'high'].includes(priority) ? priority : 'medium',
       source: 'public_form',
       submitterName: String(name).trim().slice(0, 100),
@@ -226,10 +254,31 @@ const submitPortalTicket = async (req, res, next) => {
       awaitingTeamReply: true,
       updates: [{ message: `Submitted via the client portal by ${String(name).trim()}` }],
     });
+    ticket.createdAt = new Date();
+    applySla(ticket, company);
+    await ticket.save();
 
-    Company.findById(project.company._id)
-      .then((company) => company && sendAutoReply(company, ticket))
-      .catch((err) => console.error('Failed to send portal auto-reply:', err.message));
+    sendAutoReply(company, ticket).catch((err) => console.error('Failed to send portal auto-reply:', err.message));
+    logActivity({
+      company: company._id,
+      actorName: `Client: ${ticket.submitterName}`,
+      entityType: 'ticket',
+      entityId: ticket._id,
+      entityLabel: `#${ticket.ticketNumber}`,
+      action: 'ticket.created',
+      summary: `submitted #${ticket.ticketNumber} “${ticket.title}” via the portal`,
+      link: `/tickets/${ticket._id}`,
+    });
+    await runAutomations('ticket.created', ticket._id, company._id);
+    const fresh = await Ticket.findById(ticket._id).select('assignedTo');
+    if (!fresh.assignedTo) {
+      notify(company._id, 'admins', {
+        kind: 'client_reply',
+        title: `New portal request #${ticket.ticketNumber}`,
+        body: ticket.title,
+        link: `/tickets/${ticket._id}`,
+      });
+    }
 
     res.status(201).json({ ticketNumber: ticket.ticketNumber, trackingToken: ticket.publicToken });
   } catch (error) {
@@ -247,9 +296,15 @@ const getPublicTicket = async (req, res, next) => {
       throw new Error('Ticket not found');
     }
     const project = await Project.findById(ticket.project?._id).select('publicToken publicFormEnabled portal');
-    const company = await Company.findById(ticket.company).select('name');
+    const company = await Company.findById(ticket.company).select('name workspace csatEnabled');
+    const ws = publicWorkspace(company);
     res.json({
       ...publicTicket(ticket, { withUpdates: true }),
+      ...ws,
+      fields: ws.customFields
+        .filter((f) => ticket.customFields?.[f.key] !== undefined && ticket.customFields?.[f.key] !== '')
+        .map((f) => ({ label: f.label, type: f.type, value: ticket.customFields[f.key] })),
+      csat: ticket.csat?.rating ? { rating: ticket.csat.rating, comment: ticket.csat.comment } : null,
       companyName: company?.name,
       portalToken: project?.publicFormEnabled ? project.publicToken : null,
       allowComments: project?.portal?.allowComments !== false,
@@ -306,6 +361,25 @@ const addPublicComment = async (req, res, next) => {
         : await User.find({ company: ticket.company, role: { $in: ['owner', 'admin'] }, isActive: true }).select('email');
       if (company) await sendClientCommentNotification(company, ticket, recipients, { authorName: name, message });
     })().catch((err) => console.error('Failed to notify team of client comment:', err.message));
+
+    logActivity({
+      company: ticket.company,
+      actorName: `Client: ${name}`,
+      entityType: 'ticket',
+      entityId: ticket._id,
+      entityLabel: `#${ticket.ticketNumber}`,
+      action: update.statusChangeTo ? 'ticket.reopened' : 'ticket.client_replied',
+      summary: update.statusChangeTo ? `reopened #${ticket.ticketNumber}` : `replied on #${ticket.ticketNumber}`,
+      link: `/tickets/${ticket._id}`,
+    });
+    notify(ticket.company, ticket.assignedTo || 'admins', {
+      kind: 'client_reply',
+      title: `${name} replied on #${ticket.ticketNumber}`,
+      body: message,
+      link: `/tickets/${ticket._id}`,
+    });
+    await runAutomations('ticket.client_replied', ticket._id, ticket.company);
+    if (update.statusChangeTo) await runAutomations('ticket.status_changed', ticket._id, ticket.company);
 
     const populated = await Ticket.findById(ticket._id).populate(PUBLIC_POPULATE);
     res.status(201).json(publicTicket(populated, { withUpdates: true }));
@@ -371,6 +445,53 @@ const getPortalTodos = async (req, res, next) => {
   }
 };
 
+// @desc    Client rates how their resolved request was handled (1–5 + optional comment)
+// @route   POST /api/public/tickets/:token/csat
+const submitCsat = async (req, res, next) => {
+  try {
+    const ticket = await Ticket.findOne({ publicToken: req.params.token });
+    if (!ticket) {
+      res.status(404);
+      throw new Error('Ticket not found');
+    }
+    const company = await Company.findById(ticket.company).select('csatEnabled');
+    if (company?.csatEnabled === false) {
+      res.status(403);
+      throw new Error('Ratings are disabled');
+    }
+    if (!['resolved', 'closed'].includes(ticket.status)) {
+      res.status(400);
+      throw new Error('You can rate a request once it has been resolved');
+    }
+    const rating = Number(req.body.rating);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      res.status(400);
+      throw new Error('Rating must be between 1 and 5');
+    }
+    ticket.csat = { rating, comment: String(req.body.comment || '').slice(0, 2000), submittedAt: new Date() };
+    await ticket.save();
+    logActivity({
+      company: ticket.company,
+      actorName: `Client: ${ticket.submitterName || 'Client'}`,
+      entityType: 'ticket',
+      entityId: ticket._id,
+      entityLabel: `#${ticket.ticketNumber}`,
+      action: 'ticket.csat',
+      summary: `rated #${ticket.ticketNumber} ${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}`,
+      link: `/tickets/${ticket._id}`,
+    });
+    notify(ticket.company, ticket.assignedTo || 'admins', {
+      kind: 'csat',
+      title: `#${ticket.ticketNumber} rated ${rating}/5`,
+      body: ticket.csat.comment || ticket.title,
+      link: `/tickets/${ticket._id}`,
+    });
+    res.json({ csat: { rating, comment: ticket.csat.comment } });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ───────────────────────── Legacy embeddable form ─────────────────────────
 
 // @desc    Get public metadata for a project's embeddable intake form
@@ -382,6 +503,7 @@ const getPublicForm = async (req, res, next) => {
       projectName: project.name,
       companyName: project.company?.name,
       clientName: project.client?.name,
+      ...publicWorkspace(await Company.findById(project.company._id).select('workspace csatEnabled')),
     });
   } catch (error) {
     next(error);
@@ -427,6 +549,7 @@ module.exports = {
   submitPortalTicket,
   getPublicTicket,
   addPublicComment,
+  submitCsat,
   getPublicForm,
   submitPublicForm: submitPortalTicket,
   emailWebhook,

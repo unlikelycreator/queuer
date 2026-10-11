@@ -2,6 +2,7 @@ const Project = require('../models/Project');
 const Ticket = require('../models/Ticket');
 const Client = require('../models/Client');
 const Todo = require('../models/Todo');
+const { logActivity } = require('../services/activity');
 const { escapeRegex } = require('../utils/sanitize');
 const { getPagination } = require('../utils/pagination');
 
@@ -124,6 +125,7 @@ const createProject = async (req, res, next) => {
     });
 
     const populated = await project.populate('client', 'name');
+    logActivity({ company: req.user.company, actor: req.user, entityType: 'project', entityId: project._id, entityLabel: project.name, action: 'project.created', summary: `created project ${project.name}`, link: `/projects/${project._id}` });
     res.status(201).json(populated);
   } catch (error) {
     next(error);

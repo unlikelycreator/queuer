@@ -43,11 +43,8 @@ const ticketSchema = new mongoose.Schema(
     ticketNumber: { type: Number },
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true },
-    type: {
-      type: String,
-      enum: ['bug_report', 'feature_request', 'change_request', 'support_ticket'],
-      required: true,
-    },
+    // Validated against the company's workspace ticket types in the controllers.
+    type: { type: String, required: true, trim: true },
     priority: {
       type: String,
       enum: ['low', 'medium', 'high', 'critical'],
@@ -84,6 +81,43 @@ const ticketSchema = new mongoose.Schema(
     updates: [updateSchema],
     resolvedAt: { type: Date },
     lastActivityAt: { type: Date, default: Date.now },
+
+    // Workspace-defined custom fields, keyed by field key.
+    customFields: { type: mongoose.Schema.Types.Mixed, default: {} },
+
+    checklist: [
+      {
+        text: { type: String, required: true, trim: true, maxlength: 500 },
+        done: { type: Boolean, default: false },
+        doneBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        doneAt: { type: Date },
+      },
+    ],
+
+    // Billing
+    billable: { type: Boolean, default: true },
+    estimateHours: { type: Number, min: 0 },
+    fixedPrice: { type: Number, min: 0 }, // quoted price (e.g. a feature request) billed instead of hours
+    fixedPriceInvoiced: { type: Boolean, default: false },
+    timeSpentMinutes: { type: Number, default: 0 },
+
+    // SLA
+    firstResponseAt: { type: Date },
+    slaResponseDueAt: { type: Date },
+    slaResolutionDueAt: { type: Date },
+    slaResponseBreached: { type: Boolean, default: false },
+    slaResolutionBreached: { type: Boolean, default: false },
+    slaBreachNotified: { type: Boolean, default: false },
+
+    // Customer satisfaction, left by the client from the tracking page after resolution.
+    csat: {
+      rating: { type: Number, min: 1, max: 5 },
+      comment: { type: String, trim: true, maxlength: 2000 },
+      submittedAt: { type: Date },
+    },
+
+    // Automation bookkeeping (so time-based rules fire once per ticket).
+    automationsFired: [{ type: mongoose.Schema.Types.ObjectId }],
     // Set when the client posts from the portal and no one on the team has replied yet.
     awaitingTeamReply: { type: Boolean, default: false },
 
@@ -96,10 +130,13 @@ const ticketSchema = new mongoose.Schema(
 ticketSchema.index({ company: 1, ticketNumber: 1 }, { unique: true });
 ticketSchema.index({ company: 1, status: 1, createdAt: -1 });
 ticketSchema.index({ project: 1, createdAt: -1 });
+ticketSchema.index({ company: 1, slaResolutionDueAt: 1 });
 
 const PRIORITY_RANK = { low: 0, medium: 1, high: 2, critical: 3 };
 
 ticketSchema.pre('save', function (next) {
+  // New activity starts a new idle period, so time-based rules may fire again later.
+  if (!this.isNew && this.isModified('lastActivityAt')) this.automationsFired = [];
   this.priorityRank = PRIORITY_RANK[this.priority] ?? 1;
   if (!this.publicToken) {
     this.publicToken = crypto.randomBytes(14).toString('hex');

@@ -1,8 +1,8 @@
-# ZoopDesk 2.0
+# ZoopDesk 3.0
 
-Client, project & ticket management for software studios — with a built-in **client portal**,
-**date-based project to-dos**, **two-factor authentication**, and a refined **Evergreen** design
-in light and dark themes.
+The work hub for **any** client-facing team — software, QA, support, marketing or agencies. Requests,
+projects and a client portal, plus **time tracking, invoicing, no-code automations, SLAs, CSAT and a full
+KPI dashboard**, with two-factor auth and a refined **Evergreen** design in light and dark themes.
 
 ```
 zoopdesk/
@@ -11,7 +11,23 @@ zoopdesk/
 └── docker-compose.yml MongoDB + API + Nginx, ready for a server
 ```
 
-## What's new in 2.0
+## What's new in 3.0
+
+| Area | What it does |
+| --- | --- |
+| **Workspace templates** | The admin picks what the workspace is for — *Software development*, *QA & testing*, *Customer support*, *Marketing & content* or *Agency / general* — at signup or in **Settings → Workspace**. One click sets the wording everywhere (e.g. Tickets → *Issues* / *Requests* / *Tasks*, Projects → *Campaigns* / *Products*), the request types, custom fields and SLA targets. Everything stays editable. |
+| **Custom fields** | Text, number, dropdown, date, checkbox and link fields per workspace (build number, severity, order ID, channel, publish date, budget…). Optional *required* and *show in client portal*. Exported to CSV. |
+| **Checklists** | Steps, acceptance criteria or test cases on every ticket with progress bars (paste a list to add many). |
+| **Time tracking** | Live timer from any ticket or project (header widget follows you), manual entries ("1h 30m", "1:30"), weekly timesheet, billable toggle, estimates vs. actuals, team totals. |
+| **Billing & invoices** | Turn unbilled billable time + fixed-price tickets into invoices in two clicks (no double billing). Discounts, tax/GST/VAT, payments & partial payments, overdue tracking, void. **Download real PDFs**, print, email the PDF to the client, or share a client invoice link. Three invoice themes (Modern / Classic / Minimal), accent colour, logo and business details with a live preview. |
+| **Automations** | No-code *When → If → Then* rules: triggers (created, status changed, assigned, client replied, idle for N hours, SLA breached), conditions on any field incl. custom fields, and actions (set status/priority, assign or load-balanced round-robin, tag, internal note, templated reply to the client + email, in-app notification, project to-do, due date, webhook to Slack/Zapier/Make). Recipe gallery, test-on-a-ticket, run history. |
+| **SLA policies** | First-response and resolution targets per priority, countdown badges on tickets, breach detection every minute, notifications, compliance in reports. |
+| **CSAT** | Clients rate resolved requests 1–5 ★ (+ comment) from their tracking page. |
+| **Insights (KPI dashboard)** | Created/resolved/backlog, first-response & resolution times, SLA compliance, CSAT, reopen rate, hours, utilization, billable value, revenue collected/outstanding — all with change vs. the previous period. Throughput, backlog aging, type mix, arrival heatmap (weekday × hour), hours, revenue, team leaderboard, top clients. Filters by range & client. CSV export of tickets, time and invoices. |
+| **Activity log & notifications** | Complete audit trail (people, clients, automations, SLA monitor) and an in-app notification bell (assignments, client replies, SLA breaches, ratings, paid invoices). |
+| **Saved replies** | Team or private canned responses with `{{variables}}`, inserted from the composer. |
+
+## What was new in 2.0
 
 | Area | What changed |
 | --- | --- |
@@ -70,6 +86,12 @@ cd ../backend && npm ci --omit=dev && NODE_ENV=production node server.js
 Serve `frontend/dist` with any static host (SPA fallback to `index.html`), or set `SERVE_FRONTEND=true`
 to let the API serve it on the same port.
 
+### Upgrading from 2.x
+
+No migration script is needed. Existing workspaces keep the software ticket types they already use and
+show a **"Tailor ZoopDesk to your team"** prompt on the dashboard for owners/admins. Install the new
+backend dependency (`npm install` picks up `pdfkit`) and restart. Optionally set `SCHEDULER_INTERVAL_MS`.
+
 ### Production checklist
 
 - `JWT_SECRET` — 32+ random characters. Changing it logs everyone out.
@@ -107,6 +129,23 @@ Unchanged from 1.x: **Settings → Support mailbox** connects any IMAP mailbox (
 an app password, …). Matching emails become tickets, the sender gets an auto-reply (now with a tracking
 link), and replies from the ticket page are sent from that mailbox.
 
+## API additions (v3)
+
+```
+GET|PUT /api/company/workspace   POST /api/company/workspace/template   PUT /api/company/billing
+POST /api/tickets/:id/checklist  PUT|DELETE /api/tickets/:id/checklist/:itemId
+GET|POST /api/time   PUT|DELETE /api/time/:id   GET /api/time/running|summary   POST /api/time/start|stop
+GET|POST /api/invoices   GET /api/invoices/unbilled   GET|PUT|DELETE /api/invoices/:id
+GET /api/invoices/:id/pdf   POST /api/invoices/:id/send|payments   DELETE /api/invoices/:id/payments/:pid
+GET|POST /api/automations   PUT|DELETE /api/automations/:id   POST /api/automations/:id/test
+GET /api/reports/overview   GET /api/reports/export?type=tickets|time|invoices
+GET /api/activity   GET /api/notifications(/unread)   POST /api/notifications(/:id)/read
+GET|POST /api/saved-replies   PUT|DELETE /api/saved-replies/:id
+GET /api/public/invoices/:token(/pdf)   POST /api/public/tickets/:token/csat
+```
+
+Billing endpoints are restricted to owners and admins.
+
 ## API additions (v2)
 
 ```
@@ -126,5 +165,5 @@ POST /api/public/tickets/:token/comments
 ## Tech stack
 
 **Backend:** Express, Mongoose, bcryptjs, jsonwebtoken, helmet, express-rate-limit, compression, nodemailer,
-imapflow, mailparser, qrcode (TOTP is implemented in-house per RFC 6238).
+imapflow, mailparser, qrcode, pdfkit (TOTP is implemented in-house per RFC 6238).
 **Frontend:** React 18, Vite, React Router, Tailwind CSS, Radix UI, lucide-react, recharts, axios, react-hot-toast.

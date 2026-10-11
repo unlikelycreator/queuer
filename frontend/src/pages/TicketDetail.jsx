@@ -41,13 +41,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { TypeBadge, StatusBadge, PriorityBadge, SourceLabel } from '@/components/shared/Badges';
+import { TypeBadge, StatusBadge, PriorityBadge, SourceLabel, SlaBadge } from '@/components/shared/Badges';
+import { CustomFieldsCard, ChecklistCard, TimeCard, BillingCard, CsatCard, SavedReplyPicker } from '@/components/tickets/TicketExtras';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import { ConfirmDialog, EmptyState } from '@/components/shared/Common';
 import { AttachButton, PendingFiles, AttachmentGrid } from '@/components/shared/FileChips';
 import useUploader from '@/lib/useUploader';
 import { TICKET_STATUSES, TICKET_PRIORITIES, TICKET_TYPES, findMeta } from '@/lib/constants';
-import { cn, formatDateTime, timeAgo, isOverdue, apiError, dayKey } from '@/lib/utils';
+import { cn, formatDateTime, timeAgo, isOverdue, apiError, dayKey, formatDuration } from '@/lib/utils';
 
 export default function TicketDetail() {
   const { id } = useParams();
@@ -142,6 +143,7 @@ export default function TicketDetail() {
               <TypeBadge type={ticket.type} />
               <StatusBadge status={ticket.status} />
               <PriorityBadge priority={ticket.priority} />
+              <SlaBadge ticket={ticket} />
               {ticket.awaitingTeamReply && (
                 <Badge variant="danger">
                   <MessageCircleWarning className="h-3 w-3" /> Client waiting for reply
@@ -197,6 +199,7 @@ export default function TicketDetail() {
         {/* Conversation */}
         <div className="min-w-0 space-y-5">
           <Description ticket={ticket} onSave={(description) => patch({ description }, 'Description updated')} />
+          <ChecklistCard ticket={ticket} onUpdated={setTicket} />
           <Timeline ticket={ticket} />
           <Composer ticket={ticket} onUpdated={setTicket} />
         </div>
@@ -260,6 +263,11 @@ export default function TicketDetail() {
             </div>
           </Card>
 
+          <CustomFieldsCard ticket={ticket} onPatch={patch} />
+          <TimeCard ticket={ticket} onChanged={() => api.getTicket(ticket._id).then((r) => setTicket(r.data)).catch(() => {})} />
+          <BillingCard ticket={ticket} onPatch={patch} />
+          <CsatCard csat={ticket.csat} />
+
           <Card className="space-y-3 p-4 text-sm">
             <DetailLine icon={FolderKanban} label="Project">
               <Link to={`/projects/${ticket.project?._id}`} className="font-medium text-primary hover:underline">
@@ -289,6 +297,13 @@ export default function TicketDetail() {
             <DetailLine icon={Clock} label="Created">
               <span className="text-muted-foreground">{formatDateTime(ticket.createdAt)}</span>
             </DetailLine>
+            {ticket.firstResponseAt && (
+              <DetailLine icon={MessageCircleWarning} label="First reply">
+                <span className={cn('text-muted-foreground', ticket.slaResponseBreached && 'font-semibold text-rose-600 dark:text-rose-400')}>
+                  {formatDuration((new Date(ticket.firstResponseAt) - new Date(ticket.createdAt)) / 36e5 < 1 ? 0 : Math.round((new Date(ticket.firstResponseAt) - new Date(ticket.createdAt)) / 36e5))} after opening
+                </span>
+              </DetailLine>
+            )}
             {ticket.resolvedAt && (
               <DetailLine icon={Check} label="Resolved">
                 <span className="text-muted-foreground">{formatDateTime(ticket.resolvedAt)}</span>
@@ -490,8 +505,9 @@ function Timeline({ ticket }) {
 }
 
 function TimelineItem({ update: u, ticket }) {
-  const isSystem = !u.author && !u.fromClient;
-  const isEvent = isSystem || (u.statusChangeTo && /^Status changed to/.test(u.message)) || /^(Assigned to|Unassigned|Attached \d)/.test(u.message);
+  const isSystem = !u.author && !u.fromClient && !u.authorName;
+  const isEvent =
+    isSystem || (u.statusChangeTo && /^Status changed to/.test(u.message)) || /^(Assigned to|Unassigned|Attached \d|Priority set to)/.test(u.message);
 
   // Compact event line (status changes, assignments, system messages)
   if (isEvent) {
@@ -505,7 +521,7 @@ function TimelineItem({ update: u, ticket }) {
           )}
         </div>
         <p className="min-w-0 flex-1">
-          <span className="font-semibold text-foreground">{u.author?.name || 'System'}</span>{' '}
+          <span className="font-semibold text-foreground">{u.author?.name || u.authorName || 'System'}</span>{' '}
           {u.statusChangeTo ? (
             <>
               changed status to <StatusBadge status={u.statusChangeTo} className="mx-0.5" />
@@ -529,7 +545,10 @@ function TimelineItem({ update: u, ticket }) {
     email: 'border-sky-500/25 bg-card',
     public: 'border-border bg-card',
   };
-  const author = u.fromClient ? { name: u.authorName || ticket.submitterName || 'Client', avatarColor: '#4d7c0f' } : u.author;
+  const isAutomation = !u.author && !u.fromClient && !!u.authorName;
+  const author = u.fromClient
+    ? { name: u.authorName || ticket.submitterName || 'Client', avatarColor: '#4d7c0f' }
+    : u.author || { name: u.authorName, avatarColor: '#7c3aed' };
 
   return (
     <div className="relative flex gap-3">
@@ -540,6 +559,7 @@ function TimelineItem({ update: u, ticket }) {
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pt-3">
           <span className="text-sm font-semibold">{author?.name || 'Unknown'}</span>
           {kind === 'client' && <Badge variant="lime">Client</Badge>}
+          {isAutomation && <Badge variant="purple">Automation</Badge>}
           {kind === 'internal' && (
             <Badge variant="warning">
               <Lock className="h-3 w-3" /> Internal note
@@ -666,6 +686,7 @@ function Composer({ ticket, onUpdated }) {
       <div className="flex flex-col gap-2 border-t border-border bg-secondary/20 px-3 py-2.5 sm:flex-row sm:items-center">
         <div className="flex flex-wrap items-center gap-1">
           <AttachButton uploading={uploader.uploading} onPick={uploader.pick} />
+          <SavedReplyPicker ticket={ticket} onInsert={(text) => setMessage((m) => (m.trim() ? `${m.trimEnd()}\n\n${text}` : text))} />
           {mode === 'public' && canEmail && (
             <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold text-muted-foreground hover:bg-secondary">
               <input type="checkbox" className="accent-[hsl(var(--primary))]" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} />

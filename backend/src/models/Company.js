@@ -1,5 +1,35 @@
 const mongoose = require('mongoose');
 const crypto = require('crypto');
+const { SOFTWARE_TYPES, TEMPLATES, slaPolicies } = require('../config/workspaceTemplates');
+
+const ticketTypeSchema = new mongoose.Schema(
+  {
+    value: { type: String, required: true, trim: true },
+    label: { type: String, required: true, trim: true },
+    short: { type: String, trim: true },
+    icon: { type: String, default: 'circle' },
+    color: { type: String, default: '#0d9488' },
+  },
+  { _id: false }
+);
+
+const customFieldSchema = new mongoose.Schema(
+  {
+    key: { type: String, required: true, trim: true },
+    label: { type: String, required: true, trim: true },
+    type: { type: String, enum: ['text', 'number', 'select', 'date', 'checkbox', 'url'], default: 'text' },
+    options: [{ type: String, trim: true }],
+    required: { type: Boolean, default: false },
+    showInPortal: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
+
+const slaTargetSchema = new mongoose.Schema(
+  { responseHours: { type: Number, min: 0 }, resolutionHours: { type: Number, min: 0 } },
+  { _id: false }
+);
+const DEFAULT_SLA = slaPolicies(TEMPLATES.software);
 
 const companySchema = new mongoose.Schema(
   {
@@ -45,6 +75,53 @@ const companySchema = new mongoose.Schema(
         type: [String],
         default: ['support', 'bug', 'help', 'issue', 'feature', 'request', 'ticket'],
       },
+    },
+
+    // What the team uses ZoopDesk for — drives vocabulary, ticket types and fields.
+    workspace: {
+      template: { type: String, default: 'software' },
+      configured: { type: Boolean, default: false },
+      terminology: {
+        ticket: { type: String, default: 'Ticket' },
+        tickets: { type: String, default: 'Tickets' },
+        client: { type: String, default: 'Client' },
+        clients: { type: String, default: 'Clients' },
+        project: { type: String, default: 'Project' },
+        projects: { type: String, default: 'Projects' },
+      },
+      ticketTypes: { type: [ticketTypeSchema], default: () => SOFTWARE_TYPES.map((t) => ({ ...t })) },
+      customFields: { type: [customFieldSchema], default: () => [] },
+    },
+
+    sla: {
+      enabled: { type: Boolean, default: true },
+      low: { type: slaTargetSchema, default: () => DEFAULT_SLA.low },
+      medium: { type: slaTargetSchema, default: () => DEFAULT_SLA.medium },
+      high: { type: slaTargetSchema, default: () => DEFAULT_SLA.high },
+      critical: { type: slaTargetSchema, default: () => DEFAULT_SLA.critical },
+    },
+
+    csatEnabled: { type: Boolean, default: true },
+
+    // Billing defaults + how invoices look.
+    billing: {
+      currency: { type: String, default: 'USD', uppercase: true, trim: true },
+      defaultHourlyRate: { type: Number, default: 50, min: 0 },
+      taxRate: { type: Number, default: 0, min: 0 },
+      taxLabel: { type: String, default: 'Tax', trim: true },
+      paymentTermsDays: { type: Number, default: 14, min: 0 },
+      invoicePrefix: { type: String, default: 'INV-', trim: true },
+      nextInvoiceNumber: { type: Number, default: 1001 },
+      template: { type: String, enum: ['modern', 'classic', 'minimal'], default: 'modern' },
+      accentColor: { type: String, default: '#047857' },
+      logoUrl: { type: String, default: '' },
+      businessName: { type: String, default: '', trim: true },
+      businessAddress: { type: String, default: '', trim: true },
+      businessEmail: { type: String, default: '', trim: true },
+      businessPhone: { type: String, default: '', trim: true },
+      taxId: { type: String, default: '', trim: true },
+      paymentInstructions: { type: String, default: '', trim: true },
+      footerNote: { type: String, default: 'Thank you for your business!', trim: true },
     },
 
     emailLastCheckedAt: { type: Date },

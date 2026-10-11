@@ -16,6 +16,8 @@ import {
   SlidersHorizontal,
   CalendarClock,
   MessageSquare,
+  ListChecks,
+  Clock,
 } from 'lucide-react';
 import * as api from '@/api/endpoints';
 import { Button } from '@/components/ui/button';
@@ -25,12 +27,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { PageHeader, EmptyState } from '@/components/shared/Common';
-import { TypeBadge, StatusBadge, PriorityIndicator, SourceIcon } from '@/components/shared/Badges';
+import { TypeBadge, StatusBadge, PriorityIndicator, SourceIcon, SlaBadge } from '@/components/shared/Badges';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { UserAvatar } from '@/components/shared/UserAvatar';
 import TicketFormDialog from '@/components/shared/TicketFormDialog';
 import Pagination from '@/components/shared/Pagination';
 import { TICKET_TYPES, TICKET_STATUSES, TICKET_PRIORITIES, findMeta } from '@/lib/constants';
-import { cn, timeAgo, formatDate, isOverdue, apiError } from '@/lib/utils';
+import { cn, timeAgo, formatDate, isOverdue, apiError, formatMinutes } from '@/lib/utils';
 
 const LIMIT = 20;
 
@@ -57,6 +60,7 @@ const SORTS = [
 
 export default function Tickets() {
   const navigate = useNavigate();
+  const { terms } = useWorkspace();
   const [params, setParams] = useSearchParams();
 
   // All filter state lives in the URL so views are shareable and survive refresh.
@@ -212,8 +216,8 @@ export default function Tickets() {
     <div className="animate-fade-in">
       <PageHeader
         eyebrow="Support"
-        title="Tickets"
-        description="Every bug, feature, change and support request across your clients — in one inbox."
+        title={terms.tickets}
+        description={`Every ${terms.ticket.toLowerCase()} across your ${terms.clients.toLowerCase()} — in one inbox.`}
       >
         <div className="flex items-center rounded-lg border border-border bg-card p-0.5 shadow-sm">
           {[
@@ -233,7 +237,7 @@ export default function Tickets() {
           ))}
         </div>
         <Button variant="gradient" onClick={() => setCreateOpen(true)}>
-          <Plus /> New ticket
+          <Plus /> New {terms.ticket.toLowerCase()}
         </Button>
       </PageHeader>
 
@@ -550,6 +554,17 @@ function TicketRow({ ticket: t, selected, onSelect, onOpen }) {
               </span>
             </>
           )}
+          {t.checklist?.length > 0 && (
+            <span className="inline-flex items-center gap-1" title="Checklist">
+              <ListChecks className="h-3 w-3" /> {t.checklist.filter((c) => c.done).length}/{t.checklist.length}
+            </span>
+          )}
+          {t.timeSpentMinutes > 0 && (
+            <span className="inline-flex items-center gap-1" title="Time logged">
+              <Clock className="h-3 w-3" /> {formatMinutes(t.timeSpentMinutes)}
+            </span>
+          )}
+          <SlaBadge ticket={t} />
           {t.tags?.slice(0, 2).map((tag) => (
             <span key={tag} className="rounded bg-secondary px-1.5 py-px text-[10px] font-semibold">
               {tag}
