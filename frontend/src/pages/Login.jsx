@@ -70,7 +70,7 @@ export default function Login() {
   return (
     <AuthShell
       title="Welcome back"
-      subtitle="Log in to your ZoopDesk workspace."
+      subtitle="Log in to your Queuer workspace."
       footer={
         <>
           <p>
@@ -165,7 +165,7 @@ function TwoFactorStep({ tempToken, onBack, onVerify, onSuccess }) {
         <p className="mt-2 text-sm text-muted-foreground">
           {useBackup
             ? 'Enter one of the backup codes you saved when you turned on 2FA.'
-            : 'Open your authenticator app and enter the 6-digit code for ZoopDesk.'}
+            : 'Open your authenticator app and enter the 6-digit code for Queuer.'}
         </p>
       </div>
       <form

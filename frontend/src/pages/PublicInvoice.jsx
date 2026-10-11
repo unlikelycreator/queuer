@@ -81,7 +81,7 @@ export default function PublicInvoice() {
           </>
         )}
         <p className="mt-8 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-          <LogoMark className="h-4 w-4" /> Sent with ZoopDesk
+          <LogoMark className="h-4 w-4" /> Sent with Queuer
         </p>
       </main>
     </div>

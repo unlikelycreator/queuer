@@ -27,7 +27,7 @@ export default function Settings() {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader eyebrow="Workspace" title="Settings" description="Shape ZoopDesk around how your team works." />
+      <PageHeader eyebrow="Workspace" title="Settings" description="Shape Queuer around how your team works." />
       <div className="mb-6 flex gap-1 overflow-x-auto border-b border-border scrollbar-none">
         {tabs.map((t) => (
           <button

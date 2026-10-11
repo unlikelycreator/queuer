@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
 const ThemeContext = createContext(null);
-const STORAGE_KEY = 'zoopdesk_theme';
+const STORAGE_KEY = 'queuer_theme';
 
 function readStored() {
   try {

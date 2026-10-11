@@ -151,7 +151,7 @@ export default function Dashboard() {
             <Sparkles className="h-5 w-5" />
           </span>
           <span className="flex-1">
-            <span className="block font-semibold">Tailor ZoopDesk to your team</span>
+            <span className="block font-semibold">Tailor Queuer to your team</span>
             <span className="block text-sm text-muted-foreground">Software, QA, support, marketing or agency — pick one to set wording, request types, fields and SLAs in one click.</span>
           </span>
           <ArrowRight className="h-4 w-4 text-primary" />
@@ -403,7 +403,7 @@ export default function Dashboard() {
       <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>What will your team use ZoopDesk for?</DialogTitle>
+            <DialogTitle>What will your team use Queuer for?</DialogTitle>
             <DialogDescription>We'll set the wording, request types, custom fields and SLA targets. Everything stays editable in Settings → Workspace.</DialogDescription>
           </DialogHeader>
           <TemplatePicker compact onApplied={() => setSetupOpen(false)} />

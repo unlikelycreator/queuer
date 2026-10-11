@@ -5,8 +5,8 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0b2a1f" />
-    <meta name="description" content="ZoopDesk — client, project & ticket management with a built-in client portal." />
-    <title>ZoopDesk — Client, Project & Ticket Management</title>
+    <meta name="description" content="Queuer — client, project & ticket management with a built-in client portal." />
+    <title>Queuer — Client, Project & Ticket Management</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,7 +17,15 @@
       // Apply the saved theme before first paint to avoid a light/dark flash.
       (function () {
         try {
-          var t = localStorage.getItem('zoopdesk_theme') || 'system';
+          // Carry browser storage over from the app's old name (ZoopDesk) so people stay signed in.
+          ['theme', 'token', 'user', 'portal_identity'].forEach(function (k) {
+            var old = localStorage.getItem('zoopdesk_' + k);
+            if (old !== null) {
+              if (localStorage.getItem('queuer_' + k) === null) localStorage.setItem('queuer_' + k, old);
+              localStorage.removeItem('zoopdesk_' + k);
+            }
+          });
+          var t = localStorage.getItem('queuer_theme') || 'system';
           var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
           if (dark) document.documentElement.classList.add('dark');
         } catch (e) {}

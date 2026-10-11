@@ -1,11 +1,11 @@
-# ZoopDesk 3.0
+# Queuer 3.0
 
 The work hub for **any** client-facing team — software, QA, support, marketing or agencies. Requests,
 projects and a client portal, plus **time tracking, invoicing, no-code automations, SLAs, CSAT and a full
 KPI dashboard**, with two-factor auth and a refined **Evergreen** design in light and dark themes.
 
 ```
-zoopdesk/
+queuer/
 ├── backend/           Node.js + Express + MongoDB (Mongoose) REST API
 ├── frontend/          React + Vite + Tailwind + Radix UI
 └── docker-compose.yml MongoDB + API + Nginx, ready for a server
@@ -89,8 +89,12 @@ to let the API serve it on the same port.
 ### Upgrading from 2.x
 
 No migration script is needed. Existing workspaces keep the software ticket types they already use and
-show a **"Tailor ZoopDesk to your team"** prompt on the dashboard for owners/admins. Install the new
+show a **"Tailor Queuer to your team"** prompt on the dashboard for owners/admins. Install the new
 backend dependency (`npm install` picks up `pdfkit`) and restart. Optionally set `SCHEDULER_INTERVAL_MS`.
+
+Keep the same `backend/.env` (`MONGODB_URI`, `JWT_SECRET`, `ENCRYPTION_KEY`) as before: accounts live in that
+database, and 2FA secrets are encrypted with that key. The app was renamed from ZoopDesk to Queuer; browsers
+that were signed in stay signed in, and the Docker Compose database name is unchanged (`zoopdesk`).
 
 ### Production checklist
 
@@ -122,6 +126,23 @@ backend dependency (`npm install` picks up `pdfkit`) and restart. Optionally set
 **Account & security → Set up 2FA**, scan the QR code with Google Authenticator / Authy / 1Password,
 enter the 6-digit code, and save the backup codes. At login you'll be asked for a code; "Use a backup
 code" works if the phone is lost (each code works once). 2FA applies to Google Sign-In too.
+
+## Can't log in? (account recovery)
+
+"Invalid email or password" means the email isn't in the database the API is connected to, or the
+password doesn't match. The API prints the database it uses at startup
+(`MongoDB connected: <host> / database "<name>"`). From `backend/`, using the same `.env`:
+
+```bash
+npm run account -- list                                # every user in that database
+npm run account -- show you@company.com                # 2FA on/off, locked, google-only, ...
+npm run account -- set-password you@company.com 'NewPassw0rd!'
+npm run account -- disable-2fa you@company.com         # lost phone and backup codes
+npm run account -- unlock you@company.com              # after too many failed attempts
+```
+
+If `list` doesn't show your account, `MONGODB_URI` points at a different database than the one you
+signed up on. An account made with Google Sign-In has no password; use the Google button or `set-password`.
 
 ## Email-to-ticket
 

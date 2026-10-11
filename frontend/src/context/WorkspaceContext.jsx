@@ -8,7 +8,7 @@ const WorkspaceContext = createContext(null);
 const DEFAULT_TERMS = { ticket: 'Ticket', tickets: 'Tickets', client: 'Client', clients: 'Clients', project: 'Project', projects: 'Projects' };
 
 /**
- * Loads the company's workspace configuration (what the team uses ZoopDesk for):
+ * Loads the company's workspace configuration (what the team uses Queuer for):
  * terminology, ticket types, custom fields, SLA and billing defaults.
  */
 export function WorkspaceProvider({ children }) {

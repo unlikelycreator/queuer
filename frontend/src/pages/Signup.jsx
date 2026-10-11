@@ -34,7 +34,7 @@ export default function Signup() {
       navigate('/login', { state: { tempToken: data.tempToken } });
       return;
     }
-    toast.success('Workspace created — welcome to ZoopDesk!', { duration: 5000 });
+    toast.success('Workspace created — welcome to Queuer!', { duration: 5000 });
     navigate('/');
   };
 
@@ -71,7 +71,7 @@ export default function Signup() {
   return (
     <AuthShell
       title="Create your workspace"
-      subtitle="Set up ZoopDesk for your studio in under a minute. You'll be the owner."
+      subtitle="Set up Queuer for your studio in under a minute. You'll be the owner."
       footer={
         <>
           <p>
@@ -91,7 +91,7 @@ export default function Signup() {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label>What will your team use ZoopDesk for?</Label>
+          <Label>What will your team use Queuer for?</Label>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
             {USE_CASES.map((u) => {
               const Icon = WORKSPACE_ICONS[u.icon];

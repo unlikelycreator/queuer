@@ -5,7 +5,7 @@ const { escapeHtml } = require('../utils/sanitize');
  * renders consistently in Gmail/Outlook). `body` is trusted HTML — callers must escape
  * any user-provided text before passing it in.
  */
-function renderEmail({ brand = 'ZoopDesk', heading, body, cta }) {
+function renderEmail({ brand = 'Queuer', heading, body, cta }) {
   return `<!doctype html>
 <html>
   <body style="margin:0;padding:0;background:#f3f7f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#10231a">
@@ -22,7 +22,7 @@ function renderEmail({ brand = 'ZoopDesk', heading, body, cta }) {
                 : ''
             }
           </td></tr>
-          <tr><td style="padding:16px 28px;border-top:1px solid #e6efe9;font-size:12px;color:#6b8577">Sent by ${escapeHtml(brand)} via ZoopDesk</td></tr>
+          <tr><td style="padding:16px 28px;border-top:1px solid #e6efe9;font-size:12px;color:#6b8577">Sent by ${escapeHtml(brand)} via Queuer</td></tr>
         </table>
       </td></tr>
     </table>

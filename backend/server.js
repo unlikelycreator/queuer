@@ -125,7 +125,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
-  console.log(`ZoopDesk API running on port ${PORT}`);
+  console.log(`Queuer API running on port ${PORT}`);
   if (process.env.EMAIL_POLLING !== 'false') startEmailPolling();
   if (process.env.SCHEDULER !== 'false') startScheduler();
 });

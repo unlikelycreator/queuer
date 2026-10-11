@@ -1,5 +1,5 @@
 // Workspace templates: one click sets the vocabulary, ticket types, custom fields and SLA
-// defaults for the kind of team using ZoopDesk. Everything stays editable afterwards.
+// defaults for the kind of team using Queuer. Everything stays editable afterwards.
 
 const SOFTWARE_TYPES = [
   { value: 'bug_report', label: 'Bug Report', short: 'Bug', icon: 'bug', color: '#e11d48' },

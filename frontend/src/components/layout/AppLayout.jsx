@@ -124,7 +124,7 @@ export default function AppLayout() {
 
         <div className="relative flex h-16 items-center gap-2.5 px-5">
           <LogoMark className="h-8 w-8 drop-shadow" />
-          <span className="font-display text-[19px] font-bold tracking-tight text-white">ZoopDesk</span>
+          <span className="font-display text-[19px] font-bold tracking-tight text-white">Queuer</span>
           <button className="ml-auto text-sidebar-muted hover:text-white lg:hidden" onClick={() => setMobileOpen(false)}>
             <X className="h-5 w-5" />
           </button>

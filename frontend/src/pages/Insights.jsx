@@ -99,7 +99,7 @@ export default function Insights() {
       const params = { ...range, type };
       if (client !== 'all') params.client = client;
       const res = await api.exportReport(params);
-      downloadBlob(res.data, `zoopdesk-${type}-${range.from}-to-${range.to}.csv`);
+      downloadBlob(res.data, `queuer-${type}-${range.from}-to-${range.to}.csv`);
     } catch (err) {
       toast.error(apiError(err, 'Export failed'));
     }

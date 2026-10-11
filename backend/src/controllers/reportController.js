@@ -326,7 +326,7 @@ const exportCsv = async (req, res, next) => {
       ];
     }
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="zoopdesk-${type}-${from.toISOString().slice(0, 10)}-to-${to.toISOString().slice(0, 10)}.csv"`);
+    res.setHeader('Content-Disposition', `attachment; filename="queuer-${type}-${from.toISOString().slice(0, 10)}-to-${to.toISOString().slice(0, 10)}.csv"`);
     res.send(`﻿${csv(rows)}`);
   } catch (error) {
     next(error);

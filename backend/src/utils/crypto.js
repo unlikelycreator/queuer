@@ -4,6 +4,7 @@
 const crypto = require('crypto');
 
 function getKey() {
+  // The fallback keeps its pre-rename value so secrets saved before the Queuer rename still decrypt.
   const raw = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || 'zoopdesk_fallback_key';
   return crypto.createHash('sha256').update(raw).digest(); // 32 bytes for AES-256
 }

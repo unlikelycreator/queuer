@@ -28,7 +28,7 @@ function seedWorkspace(company, key) {
 const MIN_PASSWORD = 8;
 const MAX_FAILED_LOGINS = 8;
 const LOCK_MINUTES = 15;
-const APP_NAME = process.env.APP_NAME || 'ZoopDesk';
+const APP_NAME = process.env.APP_NAME || 'Queuer';
 
 function validatePassword(password) {
   if (!password || password.length < MIN_PASSWORD) {

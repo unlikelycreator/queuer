@@ -181,7 +181,7 @@ async function executeActions(automation, ticket, company) {
           after.push(() =>
             fetch(action.value, {
               method: 'POST',
-              headers: { 'content-type': 'application/json', 'user-agent': 'ZoopDesk-Automation/1.0' },
+              headers: { 'content-type': 'application/json', 'user-agent': 'Queuer-Automation/1.0' },
               body: JSON.stringify({
                 automation: automation.name,
                 trigger: automation.trigger,

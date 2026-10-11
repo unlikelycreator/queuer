@@ -169,7 +169,7 @@ export default function EmailSettings() {
               <Mail className="h-4 w-4 text-primary" /> Support mailbox
             </CardTitle>
             <CardDescription>
-              Give ZoopDesk the login for a mailbox you control (your own domain's{' '}
+              Give Queuer the login for a mailbox you control (your own domain's{' '}
               <span className="font-mono">support@yourdomain.com</span>, a Gmail account with an app password,
               anything IMAP-accessible). The backend checks it directly on its own — no external relay service.
             </CardDescription>

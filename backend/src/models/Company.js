@@ -38,7 +38,7 @@ const companySchema = new mongoose.Schema(
     inviteCode: { type: String, unique: true, sparse: true },
 
     // Dynamic support inbox: the company decides the address (e.g. support@ezeelink.net)
-    // on their own mail provider — ZoopDesk connects to it directly over IMAP, so no
+    // on their own mail provider — Queuer connects to it directly over IMAP, so no
     // third-party inbound-parsing service is required.
     supportEmail: { type: String, trim: true, lowercase: true, default: '' },
     emailIntakeEnabled: { type: Boolean, default: false },
@@ -77,7 +77,7 @@ const companySchema = new mongoose.Schema(
       },
     },
 
-    // What the team uses ZoopDesk for — drives vocabulary, ticket types and fields.
+    // What the team uses Queuer for — drives vocabulary, ticket types and fields.
     workspace: {
       template: { type: String, default: 'software' },
       configured: { type: Boolean, default: false },

@@ -14,7 +14,7 @@ export default function NotFound() {
         <p className="mt-2 text-sm text-muted-foreground">The link may be broken, or the page may have been removed.</p>
         <Button asChild variant="gradient" className="mt-6">
           <Link to="/">
-            <Compass /> Back to ZoopDesk
+            <Compass /> Back to Queuer
           </Link>
         </Button>
       </div>

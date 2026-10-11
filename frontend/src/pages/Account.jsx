@@ -225,12 +225,12 @@ function PasswordSection({ user }) {
 
 function downloadCodes(codes) {
   const blob = new Blob(
-    [`ZoopDesk backup codes\nGenerated ${new Date().toLocaleString()}\n\nEach code can be used once.\n\n${codes.join('\n')}\n`],
+    [`Queuer backup codes\nGenerated ${new Date().toLocaleString()}\n\nEach code can be used once.\n\n${codes.join('\n')}\n`],
     { type: 'text/plain' }
   );
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'zoopdesk-backup-codes.txt';
+  a.download = 'queuer-backup-codes.txt';
   a.click();
   URL.revokeObjectURL(a.href);
 }
@@ -370,7 +370,7 @@ function SetupTwoFactorDialog({ open, onOpenChange, onDone }) {
           </DialogTitle>
           <DialogDescription>
             {step === 'scan' && '1. Scan this QR code with your authenticator app.'}
-            {step === 'verify' && '2. Enter the 6-digit code your app shows for ZoopDesk.'}
+            {step === 'verify' && '2. Enter the 6-digit code your app shows for Queuer.'}
             {step === 'codes' &&
               "2FA is on. Store these somewhere safe — each one lets you sign in once if you lose your phone. You won't see them again."}
           </DialogDescription>

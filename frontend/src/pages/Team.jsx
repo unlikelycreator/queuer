@@ -136,7 +136,7 @@ export default function Team() {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader eyebrow="Organisation" title="Team" description="Manage who has access to your ZoopDesk workspace">
+      <PageHeader eyebrow="Organisation" title="Team" description="Manage who has access to your Queuer workspace">
         {canManage && (
           <Button variant="gradient" onClick={() => setAddOpen(true)}>
             <Plus className="h-4 w-4" /> Add Member

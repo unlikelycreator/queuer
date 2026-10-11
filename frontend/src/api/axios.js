@@ -2,8 +2,8 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-export const TOKEN_KEY = 'zoopdesk_token';
-export const USER_KEY = 'zoopdesk_user';
+export const TOKEN_KEY = 'queuer_token';
+export const USER_KEY = 'queuer_user';
 
 const api = axios.create({
   baseURL: API_URL,

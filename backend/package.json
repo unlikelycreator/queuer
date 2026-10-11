@@ -1,12 +1,13 @@
 {
-  "name": "zoopdesk-backend",
-  "version": "2.0.0",
-  "description": "ZoopDesk backend - project, client & ticket management API",
+  "name": "queuer-backend",
+  "version": "3.0.0",
+  "description": "Queuer backend - project, client & ticket management API",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "account": "node scripts/account.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

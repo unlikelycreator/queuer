@@ -35,7 +35,7 @@ export default class ErrorBoundary extends React.Component {
           </div>
           <h2 className="font-display text-xl font-bold">{chunkError ? 'A new version is available' : 'Something went wrong'}</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            {chunkError ? 'Reload the page to get the latest version of ZoopDesk.' : 'This part of the page failed to load. Try again — if it keeps happening, let your admin know.'}
+            {chunkError ? 'Reload the page to get the latest version of Queuer.' : 'This part of the page failed to load. Try again — if it keeps happening, let your admin know.'}
           </p>
           <Button className="mt-5" variant="gradient" onClick={() => (chunkError ? window.location.reload() : this.setState({ error: null }))}>
             <RotateCcw /> {chunkError ? 'Reload' : 'Try again'}

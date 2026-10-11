@@ -161,8 +161,8 @@ const testSmtp = async (req, res, next) => {
     const { sendMail } = require('../services/mailSender');
     const result = await sendMail(company, {
       to: req.user.email,
-      subject: 'ZoopDesk test email',
-      text: `This is a test email from ZoopDesk to confirm outbound mail (SMTP) is working for ${company.name}.`,
+      subject: 'Queuer test email',
+      text: `This is a test email from Queuer to confirm outbound mail (SMTP) is working for ${company.name}.`,
     });
     if (!result.sent) {
       res.status(400);

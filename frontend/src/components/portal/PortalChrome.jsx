@@ -4,7 +4,7 @@ import ThemeToggle from '@/components/shared/ThemeToggle';
 import { LogoMark } from '@/components/shared/Logo';
 import { initials } from '@/lib/utils';
 
-export const PORTAL_EMAIL_KEY = 'zoopdesk_portal_identity';
+export const PORTAL_EMAIL_KEY = 'queuer_portal_identity';
 
 export function readIdentity() {
   try {
@@ -48,7 +48,7 @@ export default function PortalChrome({ companyName, homeHref, children }) {
 
       <footer className="relative z-10 border-t border-border/60 py-6">
         <div className="mx-auto flex max-w-5xl items-center justify-center gap-2 px-4 text-xs text-muted-foreground">
-          <LogoMark className="h-4 w-4" /> Powered by <span className="font-semibold text-foreground">ZoopDesk</span>
+          <LogoMark className="h-4 w-4" /> Powered by <span className="font-semibold text-foreground">Queuer</span>
         </div>
       </footer>
     </div>

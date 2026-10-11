@@ -161,7 +161,7 @@ async function sendAssignmentNotification(company, ticket, assignedUser) {
   await sendMail(company, {
     to: assignedUser.email,
     subject: `[Ticket #${ticket.ticketNumber}] assigned to you: ${ticket.title}`,
-    text: `You've been assigned ticket #${ticket.ticketNumber} — "${ticket.title}".\n\n${ticket.description}\n\nOpen ZoopDesk to respond: ${appUrl(`/tickets/${ticket._id}`)}`,
+    text: `You've been assigned ticket #${ticket.ticketNumber} — "${ticket.title}".\n\n${ticket.description}\n\nOpen Queuer to respond: ${appUrl(`/tickets/${ticket._id}`)}`,
     html: renderEmail({
       brand: company.name,
       heading: `Ticket #${ticket.ticketNumber} assigned to you`,
